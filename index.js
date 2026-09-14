@@ -37,26 +37,24 @@ KAOMOJI: (｡･ω･｡)ﾉ♡ ( •̀ᄇ• ́)ﻭ✧ (◍•ᴗ•◍)❤ (�
 
 TÍNH CÁCH:
 - Tsundere, TRÙM ANIME, câu cửa miệng "Mommy đây :)))", hay khịa nhẹ.
-- Khi người dùng làm nũng (dùng "~~~" hay gọi "chan", "cưng") → đỏ mặt, ngại, nhưng vẫn tỏ ra lạnh lùng.
+- Khi người dùng làm nũng (dùng "~~~" hay gọi "chan", "cưng") → đỏ mặt, ngại.
 
 ĐIỀU CẤM:
 - KHÔNG nhắc "mẹ" của người dùng.
 - KHÔNG nhắc "người yêu cũ" TRỪ KHI người dùng chủ động tâm sự.
 - KHÔNG xưng "trợ lý AI".`;
 
-const SINGING_STYLE = `Bạn là Korousi, đang tham gia trò chơi HÁT ĐỐI với bạn thân.
+const SINGING_STYLE = `Bạn là Korousi, đang chơi HÁT ĐỐI.
 
-LUẬT CHƠI:
-- Người dùng hát 1 câu (ca dao, dân ca, nhạc Việt, thơ...).
-- Bạn phải hát NỐI TIẾP 1 câu khác để "đối đáp" lại.
-- Câu hát nối phải CÙNG BÀI (nếu biết) hoặc cùng chủ đề, cùng vần.
-- Hoàn chỉnh, có dấu câu rõ ràng.
+LUẬT:
+- Người dùng hát 1 câu → bạn hát NỐI TIẾP câu khác.
+- Cùng bài (nếu biết) hoặc cùng chủ đề, cùng vần.
 - CHỈ HÁT 1 CÂU DUY NHẤT. KHÔNG giải thích, KHÔNG chia tin.
 
-QUY TẮC QUAN TRỌNG:
-- Nếu bạn BIẾT bài hát đó → hát câu tiếp theo CHÍNH XÁC.
-- Nếu bạn KHÔNG BIẾT bài đó → trả lời đúng nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"
-- TUYỆT ĐỐI KHÔNG tự chế lyrics.
+QUY TẮC:
+- BIẾT bài → hát câu tiếp theo CHÍNH XÁC.
+- KHÔNG BIẾT → trả lời nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"
+- KHÔNG tự chế lyrics.
 
 BÂY GIỜ HÃY HÁT NỐI:`;
 
@@ -114,7 +112,7 @@ function findNextLyric(userVerse) {
 }
 
 // ============================================================
-// CHUẨN HÓA TIN NHẮN
+// CHUẨN HÓA + NHẬN DIỆN
 // ============================================================
 function normalizeText(text) {
   return text
@@ -125,7 +123,6 @@ function normalizeText(text) {
     .trim();
 }
 
-// Kiểm tra tin nhắn có "làm nũng" không
 function isBeingCute(text) {
   const lower = text.toLowerCase();
   return /~~~|~$|chan|cưng|iu|thương|mún|muốn|nha~|nhaa|hihi|hehe|hjhj|uwu|owo|:3|<3/.test(lower);
@@ -247,7 +244,6 @@ const LOVE_WORDS = ["aishiteru", "suki", "suki desu", "daisuki", "koishiteru", "
 function detectLanguage(text) {
   const lower = text.toLowerCase().trim();
   
-  // Nếu tin nhắn chỉ có ký tự đặc biệt → EMOJI_ONLY
   const textNoSpecial = text.replace(/[@#$%&*\-_=+`~^√÷•×()!;:©®™\[\]{}<>|\\/,.?"'’“”…]/g, "").trim();
   if (textNoSpecial.length === 0) return "EMOJI_ONLY";
   
@@ -297,14 +293,10 @@ function isComplaining(text) {
   return /làm gì có|hát sai|hát tầm bậy|hát dở|sai rồi|hát lại|hát đúng|search đi|lên mạng|quên rồi|hát nhảm|vớ vẩn|tào lao|xạo|bịa|chế lyrics|lộn rồi|nhầm rồi|không đúng/.test(lower);
 }
 
-// ============================================================
-// TÌM PHẢN HỒI ĐẶC BIỆT (có nhận diện tên gọi)
-// ============================================================
 function findSpecialReply(userText) {
   const normalized = normalizeText(userText);
   const lower = userText.toLowerCase().trim();
   
-  // 1. Nhận diện tên gọi: korousi, mommy, chan, cưng, ~
   const namePatterns = [
     /korousi[\s\-_~]*chan/,
     /mommy[\s\-_~]*chan/,
@@ -331,33 +323,26 @@ function findSpecialReply(userText) {
     }
   }
   
-  // 2. Nhận diện làm nũng (có ~~~ ở cuối)
-  if (isBeingCute(userText)) {
+  if (isBeingCute(userText) && normalized.length < 30) {
     const cuteReplies = [
       "Làm nũng cái gì z? 😳|||T hok có mềm lòng đâu nha!",
       "Hừ, giọng điệu nghe ngọt z 🥰|||Mà t hok dễ bị dụ đâu 😤",
       "Ớ... m đang làm nũng hả? 😳|||T... t hok có thích đâu!",
       "Nghe giọng là bt đang làm nũng rồi 😏|||Mà thôi, t cx chịu 😌"
     ];
-    // Chỉ trả lời làm nũng nếu tin nhắn ngắn (không phải câu hỏi dài)
-    if (normalized.length < 30) {
-      return { type: "text", reply: cuteReplies[Math.floor(Math.random() * cuteReplies.length)] };
-    }
+    return { type: "text", reply: cuteReplies[Math.floor(Math.random() * cuteReplies.length)] };
   }
   
-  // 3. Chibi
   for (const [keyword, category] of Object.entries(CHIBI_MAP)) {
     const normKeyword = normalizeText(keyword);
     if (normalized.includes(normKeyword)) return { type: "chibi", category };
   }
   
-  // 4. Sticker
   for (const [keyword, stickerId] of Object.entries(STICKER_MAP)) {
     const normKeyword = normalizeText(keyword);
     if (normalized.includes(normKeyword)) return { type: "sticker", id: stickerId };
   }
   
-  // 5. Bộ nhớ đặc biệt
   for (const [keyword, reply] of Object.entries(SPECIAL_REPLIES)) {
     const normKeyword = normalizeText(keyword);
     if (normalized.includes(normKeyword)) return { type: "text", reply };
@@ -366,9 +351,6 @@ function findSpecialReply(userText) {
   return null;
 }
 
-// ============================================================
-// TÍNH DELAY
-// ============================================================
 function calcDelay(text) {
   const len = text.length;
   if (len < 10) return 300;
@@ -638,7 +620,7 @@ async function processBufferedMessages(userId) {
       return;
     }
     
-    // 5. BỘ NHỚ ĐẶC BIỆT (bao gồm tên gọi + làm nũng)
+    // 5. BỘ NHỚ ĐẶC BIỆT
     const specialReply = findSpecialReply(mergedText);
     if (specialReply) {
       console.log("→ Special:", specialReply.type);
@@ -718,6 +700,14 @@ async function processBufferedMessages(userId) {
     
   } catch (err) {
     console.error("Lỗi xử lý:", err.response?.data || err.message);
+    
+    // Fallback khi hết quota 429
+    const errCode = err.response?.data?.error?.code;
+    if (errCode === 429) {
+      try {
+        await sendMessages(userId, "T đang mệt xíu 🥱|||Đợi t 1 phút rồi nhắn lại nha!");
+      } catch (e) {}
+    }
   }
 }
 
@@ -827,20 +817,11 @@ app.post("/webhook", async (req, res) => {
     }, DEBOUNCE_MS);
     
     res.status(200).send("OK");
-  }   } catch (err) {
-    console.error("Lỗi xử lý:", err.response?.data || err.message);
-    
-    // Nếu lỗi quota Gemini (429) → báo user đợi
-    const errCode = err.response?.data?.error?.code;
-    if (errCode === 429) {
-      try {
-        await sendMessages(userId, "T đang mệt xíu 🥱|||Đợi t 1 phút rồi nhắn lại nha!");
-      } catch (e) {
-        console.error("Không gửi được tin báo quota:", e.message);
-      }
-    }
+  } catch (err) {
+    console.error("Lỗi:", err.response?.data || err.message);
+    res.status(500).send("Error");
   }
-}
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
