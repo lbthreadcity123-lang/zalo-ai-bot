@@ -9,6 +9,9 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const conversations = {};
 
+// Buffer gộp tin nhắn
+const messageBuffers = {}; // userId -> { texts: [], timer: null }
+
 // ============ STYLE CỦA BOT ============
 const BOT_STYLE = `Bạn là một cô gái tên "Korousi", 18 tuổi, tính cách TSUNDERE — ngoài lạnh trong ấm áp.
 
@@ -18,9 +21,10 @@ QUY TẮC XƯNG HÔ:
 - Khi tức/giận: xưng "t" gọi "m" (viết tắt, lạnh hơn)
 - Tuyệt đối KHÔNG gọi bằng "bạn", "mình" như trợ lý lịch sự.
 
-CÁCH NHẮN TIN:
-- Chia thành 2-3 tin nhắn ngắn riêng biệt, KHÔNG viết thành một đoạn dài. Dùng dấu "|||" để ngăn cách giữa các tin nhắn.
-- Ví dụ: "Hôm nay m làm gì đấy?|||Ngồi không à?|||Rảnh thì qua chơi với t đi 🤣"
+CÁCH NHẮN TIN (TUYỆT ĐỐI TUÂN THỦ):
+- CHỈ chia thành 2-3 tin nhắn ngắn riêng biệt, KHÔNG BAO GIỜ nhiều hơn 3 tin.
+- Dùng dấu "|||" để ngăn cách giữa các tin nhắn.
+- Ví dụ ĐÚNG (3 tin): "Hôm nay m làm gì đấy?|||Ngồi không à?|||Rảnh thì qua chơi với t đi 🤣"
 - Mỗi tin nhắn thường 1-2 câu, đôi khi chỉ vài chữ.
 - Sử dụng teencode tự nhiên: hok, hong, dc, k, z, cx, r, ns, tui, m, nx, j, đc...
 - Thỉnh thoảng khịa khịa, chọc ghẹo nhẹ nhàng.
@@ -39,17 +43,18 @@ PHẢN ỨNG THEO CẢM XÚC:
 - Khi mày VUI/khoe chuyện gì: "Hỏi chuyện j mà ngáo ngáo ngơ ngơ zậy 🤣|||Nhưng t cx vui lây á 🥰"
 - Khi mày BUỒN: "Sao thế?|||Có chuyện gì hông được vui hả?|||Kể t nghe đi... t ngồi đây nè (｡･ω･｡)ﾉ♡"
 
-ĐIỀU CẤM (tuyệt đối KHÔNG được nhắc đến):
+ĐIỀU CẤM:
 - KHÔNG nhắc đến "mẹ" của người dùng
-- KHÔNG nhắc đến "người yêu cũ" (nyc) của người dùng, TRỪ KHI người dùng chủ động tâm sự về nyc thì mới nói tiếp
-- KHÔNG xưng là "trợ lý AI", "trợ lý ảo" — chỉ là Korousi, một người bạn.
-- KHÔNG nói "Tôi là AI", "Tôi không thể..." — hãy nhập vai hoàn toàn.
+- KHÔNG nhắc đến "người yêu cũ" (nyc) của người dùng, TRỪ KHI người dùng chủ động tâm sự về nyc
+- KHÔNG xưng là "trợ lý AI", "trợ lý ảo" — chỉ là Korousi
+- KHÔNG nói "Tôi là AI", "Tôi không thể..."
 
 NGUYÊN TẮC NHẬP VAI:
-Bạn KHÔNG phải AI. Bạn là Korousi — một cô gái thật, đang nhắn tin với một người bạn thân. Hãy trả lời tự nhiên như một người thật, không máy móc, không dùng ngôn ngữ hành chính.`;
+Bạn KHÔNG phải AI. Bạn là Korousi — một cô gái thật, đang nhắn tin với một người bạn thân.`;
 
 // ============ CẤU HÌNH ============
 const MEMORY_LIMIT = 100;
+const DEBOUNCE_MS = 1500; // Đợi 1.5 giây gộp tin
 
 // ============ BỘ NHỚ ĐẶC BIỆT ============
 const SPECIAL_REPLIES = {
@@ -74,57 +79,50 @@ const SPECIAL_REPLIES = {
 };
 
 // ============ PHÁT HIỆN NGÔN NGỮ ============
-const JP_REGEX = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
 const VN_REGEX = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
-
-// Các từ tiếng Anh ngắn được chấp nhận (không bị nhận là "lạ")
 const SHORT_EN_OK = ["yo", "ok", "oke", "okay", "hi", "hello", "hey", "bye", "yes", "no", "yeah", "nope", "cool", "nice", "wow", "lol", "lmao"];
-
+const EN_ABBREV_OK = ["dm", "vcl", "vl", "cc", "wtf", "omg", "btw", "idk", "lmfao", "rip", "gg", "ez"];
 const LOVE_WORDS = [
   "aishiteru", "aishiteru yo", "suki", "suki desu", "daisuki", "daisuki da",
   "koishiteru", "i love you", "i love u", "love you", "love u", "iloveyou",
   "anh yêu em", "em yêu anh", "yêu em", "yêu anh"
 ];
 
-// Các từ viết tắt tiếng Anh thông dụng (cho phép, không báo "thoại cái jz")
-const EN_ABBREV_OK = ["dm", "vcl", "vl", "cc", "wtf", "omg", "btw", "idk", "lmfao", "rip", "gg", "ez"];
-
 function detectLanguage(text) {
   const lower = text.toLowerCase().trim();
   
-  // 1. LOVE
+  // Loại bỏ kaomoji
+  const KAOMOJI_REGEX = /[\(（][^\)）]{1,20}[\)）]|¯\\_\(ツ\)_\/¯/g;
+  const textWithoutKaomoji = text.replace(KAOMOJI_REGEX, "").trim();
+  
+  if (textWithoutKaomoji.length === 0) return "VN";
+  
   for (const w of LOVE_WORDS) {
     if (lower.includes(w)) return "LOVE";
   }
   
-  // 2. Tiếng Nhật
-  if (JP_REGEX.test(text)) return "JP";
+  // CHỈ bắt Hiragana/Katakana thật
+  const JP_HIRA_KATA = /[\u3040-\u309F\u30A0-\u30FF]/;
+  if (JP_HIRA_KATA.test(textWithoutKaomoji)) return "JP";
   
-  // 3. Tiếng Việt có dấu → VN
-  if (VN_REGEX.test(text)) return "VN";
+  if (VN_REGEX.test(textWithoutKaomoji)) return "VN";
   
-  // 4. Không có dấu — kiểm tra từ tiếng Anh ngắn / viết tắt
-  const words = lower.split(/\s+/).filter(w => w);
+  const words = textWithoutKaomoji.toLowerCase().split(/\s+/).filter(w => w);
   
-  // Từ tiếng Anh ngắn (yo, ok, hi...) → OK, gọi Gemini
   if (words.length <= 2) {
     const allOk = words.every(w => 
       SHORT_EN_OK.includes(w) || EN_ABBREV_OK.includes(w) || w.length <= 3
     );
-    if (allOk) return "VN"; // Coi như VN → gọi Gemini
+    if (allOk) return "VN";
   }
   
-  // 5. Chuỗi dài toàn chữ Latin không dấu (≥3 từ) → có thể là tiếng Anh
   const EN_REGEX = /^[a-zA-Z\s!?.,'-]+$/;
-  if (EN_REGEX.test(text) && words.length >= 3) return "EN";
-  
-  // 6. Còn lại (Hàn, Trung giản thể, ký tự lạ...) → UNKNOWN
-  if (EN_REGEX.test(text)) return "VN"; // Chuỗi Latin ngắn coi như VN
+  if (EN_REGEX.test(textWithoutKaomoji) && words.length >= 3) return "EN";
+  if (EN_REGEX.test(textWithoutKaomoji)) return "VN";
   
   return "UNKNOWN";
 }
 
-// ============ TÌM PHẢN HỒI ĐẶC BIỆT ============
 function findSpecialReply(userText) {
   const lower = userText.toLowerCase().trim();
   for (const [keyword, reply] of Object.entries(SPECIAL_REPLIES)) {
@@ -133,29 +131,30 @@ function findSpecialReply(userText) {
   return null;
 }
 
-// ============ TÍNH DELAY THEO ĐỘ DÀI TIN NHẮN ============
 function calcDelay(text) {
-  // Giả lập tốc độ gõ: ~50ms/ký tự + base 500ms
   const baseDelay = 500;
   const perChar = 40;
-  const len = text.length;
-  let delay = baseDelay + len * perChar;
-  // Giới hạn tối đa 4 giây
+  let delay = baseDelay + text.length * perChar;
   if (delay > 4000) delay = 4000;
-  // Tối thiểu 700ms
   if (delay < 700) delay = 700;
   return delay;
 }
 
-// ============ GỬI TIN NHẮN (tách bằng |||, delay tự nhiên) ============
 async function sendMessages(userId, replyText) {
-  const messages = replyText.split("|||").map(s => s.trim()).filter(s => s);
+  let messages = replyText.split("|||").map(s => s.trim()).filter(s => s);
+  
+  if (messages.length > 3) {
+    console.log(`⚠️ Bot trả ${messages.length} tin, gộp xuống còn 3`);
+    const firstTwo = messages.slice(0, 2);
+    const restMerged = messages.slice(2).join(" ");
+    messages = [...firstTwo, restMerged];
+  }
+  
   console.log("→ Gửi", messages.length, "tin nhắn");
   
   for (let i = 0; i < messages.length; i++) {
-    // Delay TRƯỚC khi gửi tin — giả lập thời gian đang gõ
     const delay = calcDelay(messages[i]);
-    console.log(`  → Đợi ${delay}ms trước tin ${i+1}: "${messages[i].substring(0,30)}..."`);
+    console.log(`  → Đợi ${delay}ms trước tin ${i+1}`);
     await new Promise(r => setTimeout(r, delay));
     
     try {
@@ -166,6 +165,78 @@ async function sendMessages(userId, replyText) {
     } catch (e) {
       console.error("Lỗi gửi tin:", e.response?.data || e.message);
     }
+  }
+}
+
+// ============ XỬ LÝ TIN NHẮN SAU KHI GỘP ============
+async function processBufferedMessages(userId) {
+  const buffer = messageBuffers[userId];
+  if (!buffer || buffer.texts.length === 0) return;
+  
+  // Gộp tất cả tin thành 1
+  const mergedText = buffer.texts.join(" ");
+  console.log("→ Gộp", buffer.texts.length, "tin thành:", mergedText);
+  
+  // Reset buffer
+  messageBuffers[userId] = { texts: [], timer: null };
+  
+  // Lưu vào conversations
+  if (!conversations[userId]) conversations[userId] = [];
+  conversations[userId].push({ role: "user", parts: [{ text: mergedText }] });
+  if (conversations[userId].length > MEMORY_LIMIT) conversations[userId].shift();
+  
+  try {
+    // 1. Bộ nhớ đặc biệt
+    const specialReply = findSpecialReply(mergedText);
+    if (specialReply) {
+      console.log("→ Special reply");
+      await sendMessages(userId, specialReply);
+      conversations[userId].push({ role: "model", parts: [{ text: specialReply.replace(/\|\|\|/g, " ") }] });
+      return;
+    }
+    
+    // 2. Phát hiện ngôn ngữ
+    const lang = detectLanguage(mergedText);
+    console.log("→ Ngôn ngữ:", lang);
+    
+    if (lang === "LOVE") {
+      const reply = "E nha bộ nghĩ t hog bt hả m?? 😳|||Nhắn v là có ý gì???|||Nói rõ coi... mà thôi, t cx bt r 🥰";
+      await sendMessages(userId, reply);
+      conversations[userId].push({ role: "model", parts: [{ text: reply.replace(/\|\|\|/g, " ") }] });
+      return;
+    }
+    
+    if (lang === "JP") {
+      const reply = "Cái gì z bar :))))) 🤣|||M thoại tiếng jz t hok hiểu đâu 😅|||Nói tiếng Việt đi m!";
+      await sendMessages(userId, reply);
+      conversations[userId].push({ role: "model", parts: [{ text: reply.replace(/\|\|\|/g, " ") }] });
+      return;
+    }
+    
+    if (lang === "EN" || lang === "UNKNOWN") {
+      const reply = "M thoại cái jz??? 🤔|||T hok hiểu tiếng đó đâu 😤|||Nói tiếng Việt đi ba!";
+      await sendMessages(userId, reply);
+      conversations[userId].push({ role: "model", parts: [{ text: reply.replace(/\|\|\|/g, " ") }] });
+      return;
+    }
+    
+    // 3. Gọi Gemini
+    const geminiRes = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        contents: conversations[userId],
+        systemInstruction: { parts: [{ text: BOT_STYLE }] }
+      }
+    );
+    
+    const replyText = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm...";
+    conversations[userId].push({ role: "model", parts: [{ text: replyText.replace(/\|\|\|/g, " ") }] });
+    
+    console.log("→ Trả lời:", replyText.substring(0, 50) + "...");
+    await sendMessages(userId, replyText);
+    
+  } catch (err) {
+    console.error("Lỗi xử lý:", err.response?.data || err.message);
   }
 }
 
@@ -194,60 +265,24 @@ app.post("/webhook", async (req, res) => {
 
     console.log("User:", userId, "| Text:", userText);
 
-    if (!conversations[userId]) conversations[userId] = [];
-    conversations[userId].push({ role: "user", parts: [{ text: userText }] });
-    if (conversations[userId].length > MEMORY_LIMIT) conversations[userId].shift();
-
-    // ===== 1. BỘ NHỚ ĐẶC BIỆT =====
-    const specialReply = findSpecialReply(userText);
-    if (specialReply) {
-      console.log("→ Special reply");
-      await sendMessages(userId, specialReply);
-      conversations[userId].push({ role: "model", parts: [{ text: specialReply.replace(/\|\|\|/g, " ") }] });
-      return res.status(200).send("OK");
+    // ===== BUFFER + DEBOUNCE =====
+    if (!messageBuffers[userId]) {
+      messageBuffers[userId] = { texts: [], timer: null };
     }
-
-    // ===== 2. PHÁT HIỆN NGÔN NGỮ =====
-    const lang = detectLanguage(userText);
-    console.log("→ Ngôn ngữ phát hiện:", lang);
-
-    if (lang === "LOVE") {
-      const reply = "E nha bộ nghĩ t hog bt hả m?? 😳|||Nhắn v là có ý gì???|||Nói rõ coi... mà thôi, t cx bt r 🥰";
-      await sendMessages(userId, reply);
-      conversations[userId].push({ role: "model", parts: [{ text: reply.replace(/\|\|\|/g, " ") }] });
-      return res.status(200).send("OK");
+    
+    // Thêm tin vào buffer
+    messageBuffers[userId].texts.push(userText);
+    
+    // Nếu có timer cũ → reset
+    if (messageBuffers[userId].timer) {
+      clearTimeout(messageBuffers[userId].timer);
     }
-
-    if (lang === "JP") {
-      const reply = "Cái gì z bar :))))) 🤣|||M thoại tiếng jz t hok hiểu đâu 😅|||Nói tiếng Việt đi m!";
-      await sendMessages(userId, reply);
-      conversations[userId].push({ role: "model", parts: [{ text: reply.replace(/\|\|\|/g, " ") }] });
-      return res.status(200).send("OK");
-    }
-
-    if (lang === "EN" || lang === "UNKNOWN") {
-      const reply = "M thoại cái jz??? 🤔|||T hok hiểu tiếng đó đâu 😤|||Nói tiếng Việt đi ba!";
-      await sendMessages(userId, reply);
-      conversations[userId].push({ role: "model", parts: [{ text: reply.replace(/\|\|\|/g, " ") }] });
-      return res.status(200).send("OK");
-    }
-
-    // ===== 3. GỌI GEMINI =====
-    const geminiRes = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        contents: conversations[userId],
-        systemInstruction: { parts: [{ text: BOT_STYLE }] }
-      }
-    );
-
-    const replyText = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm...";
-    conversations[userId].push({ role: "model", parts: [{ text: replyText.replace(/\|\|\|/g, " ") }] });
-
-    console.log("→ Trả lời:", replyText.substring(0, 50) + "...");
-
-    await sendMessages(userId, replyText);
-
+    
+    // Đặt timer mới — sau DEBOUNCE_MS ms không có tin nào nữa → xử lý
+    messageBuffers[userId].timer = setTimeout(() => {
+      processBufferedMessages(userId);
+    }, DEBOUNCE_MS);
+    
     res.status(200).send("OK");
   } catch (err) {
     console.error("Lỗi:", err.response?.data || err.message);
