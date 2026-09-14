@@ -506,3 +506,92 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Bot chạy tại port ${PORT}`);
 });
+// ============================================================
+// LẤY ẢNH CHIBI TỪ NEKOS.BEST
+// ============================================================
+async function fetchChibiImage(category) {
+  try {
+    const res = await axios.get(`https://nekos.best/api/v2/${category}`);
+    const result = res.data?.results?.[0];
+    if (!result?.url) return null;
+    
+    return {
+      url: result.url,
+      artist: result.artist_name || "Unknown",
+      source: result.source_url || ""
+    };
+  } catch (e) {
+    console.error("Lỗi Nekos.best:", e.response?.data || e.message);
+    return null;
+  }
+}
+
+// ============================================================
+// GỬI ẢNH CHIBI THEO CẢM XÚC
+// ============================================================
+async function sendChibiForEmotion(userId, emotion) {
+  const chibi = await fetchChibiImage(emotion);
+  if (!chibi) {
+    console.log("❌ Không lấy được ảnh chibi cho:", emotion);
+    return false;
+  }
+  
+  await sendImage(userId, chibi.url);
+  console.log("✅ Đã gửi chibi:", emotion);
+  return true;
+} // ============================================================
+// BỘ ẢNH CHIBI THEO CẢM XÚC
+// ============================================================
+const CHIBI_MAP = {
+  // Vui vẻ
+  "vui": "happy",
+  "hạnh phúc": "happy",
+  "cười": "smile",
+  "cười tươi": "smile",
+  "nháy mắt": "wink",
+  "vẫy tay": "wave",
+  "chào": "wave",
+  "nhảy": "dance",
+  
+  // Buồn
+  "buồn": "cry",
+  "khóc": "cry",
+  "tủi thân": "cry",
+  
+  // Giận
+  "giận": "pout",
+  "dỗi": "pout",
+  "tức": "pout",
+  
+  // Ngại
+  "ngại": "blush",
+  "đỏ mặt": "blush",
+  "xấu hổ": "blush",
+  
+  // Yêu thương
+  "yêu": "kiss",
+  "hôn": "kiss",
+  "ôm": "hug",
+  "âu yếm": "cuddle",
+  "xoa đầu": "pat",
+  "nắm tay": "handhold",
+  
+  // Chọc ghẹo
+  "chọc": "poke",
+  "cù": "tickle",
+  "đồ ngốc": "baka",
+  "ngốc": "baka",
+  
+  // Khác
+  "ngủ": "sleep",
+  "suy nghĩ": "think",
+  "nhún vai": "shrug",
+  "cho ăn": "feed",
+  "tự mãn": "smug",
+  "like": "thumbsup",
+  "nhìn": "stare",
+  "đập tay": "highfive",
+  "gật đầu": "nod",
+  "từ chối": "nope",
+  "đập mặt": "facepalm"
+};
