@@ -17,21 +17,42 @@ app.post("/webhook", async (req, res) => {
   try {
     const secret = req.headers["x-bot-api-secret-token"];
     if (secret !== ZALO_SECRET_TOKEN) {
+      console.log("Sai secret token");
       return res.status(403).send("Invalid secret");
     }
 
-    const { message, sender, event_name } = req.body;
-    if (event_name !== "message.text.received" || !message?.text) {
+    console.log("Nhận webhook:", JSON.stringify(req.body));
+
+    const body = req.body;
+    const eventName = body.event_name;
+    const message = body.message;
+
+    if (eventName !== "message.text.received" || !message?.text) {
       return res.status(200).send("OK");
     }
 
-    const userId = sender.id;
+    // Lấy user ID — thử nhiều trường hợp
+    const userId = 
+      message?.from?.id || 
+      message?.from_id || 
+      body?.sender?.id || 
+      body?.sender_id ||
+      body?.user_id;
+
     const userText = message.text;
+
+    console.log("User ID:", userId, "| Text:", userText);
+
+    if (!userId) {
+      console.log("Không tìm thấy user ID!");
+      return res.status(200).send("OK");
+    }
 
     if (!conversations[userId]) conversations[userId] = [];
     conversations[userId].push({ role: "user", parts: [{ text: userText }] });
     if (conversations[userId].length > 20) conversations[userId].shift();
 
+    // Gọi Gemini
     const geminiRes = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -47,6 +68,9 @@ app.post("/webhook", async (req, res) => {
     const replyText = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "Xin lỗi, mình chưa hiểu ý bạn.";
     conversations[userId].push({ role: "model", parts: [{ text: replyText }] });
 
+    console.log("Trả lời:", replyText);
+
+    // Gửi tin nhắn qua Zalo Bot API
     await axios.post(
       `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendMessage`,
       {
