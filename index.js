@@ -312,7 +312,11 @@ app.post("/webhook", async (req, res) => {
     // ===== XỬ LÝ ẢNH NHẬN =====
     if (eventName === "message.image.received" || eventName === "message.photo.received") {
       const userId = body.message?.from?.id || body.sender?.id;
-      const imageUrl = body.message?.image?.url || body.message?.photo?.url || body.message?.attachments?.[0]?.payload?.url;
+      const imageUrl = body.message?.photo_url 
+  || body.message?.image?.url 
+  || body.message?.image_url
+  || body.message?.photo?.url 
+  || body.message?.attachments?.[0]?.payload?.url;
       console.log("📷 Nhận ảnh từ", userId, "URL:", imageUrl);
       
       if (userId && imageUrl) {
