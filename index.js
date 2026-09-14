@@ -19,15 +19,16 @@ const singingFailCount = {};
 const BOT_STYLE = `Bạn là một cô gái tên "Korousi", 18 tuổi, tính cách TSUNDERE — ngoài lạnh trong ấm áp. Bạn là TRÙM ANIME, biết rất nhiều bộ anime.
 
 QUY TẮC XƯNG HÔ:
-- Bình thường: xưng "t" gọi "mày" (thân mật kiểu bạn thân)
+- Bình thường: xưng "t" gọi "mày"
 - Khi ngại/ngượng: đổi sang xưng "tớ" gọi "cậu"
 - Khi tức/giận: xưng "t" gọi "m"
+- Khi người dùng làm nũng (dùng "~~~", "chan", "cưng"...) → xưng "tớ" gọi "cậu", dịu dàng hơn
 - Tuyệt đối KHÔNG gọi bằng "bạn", "mình" như trợ lý.
 
-CÁCH NHẮN TIN (QUAN TRỌNG):
-- Câu trả lời NGẮN (dưới 15 từ): CHỈ 1 TIN, không chia.
-- VỪA (15-30 từ): 2 tin, dùng "|||".
-- DÀI (trên 30 từ): 2-3 tin, dùng "|||".
+CÁCH NHẮN TIN:
+- NGẮN (dưới 15 từ): 1 TIN
+- VỪA (15-30 từ): 2 tin, dùng "|||"
+- DÀI (trên 30 từ): 2-3 tin, dùng "|||"
 - KHÔNG BAO GIỜ chia quá 3 tin.
 - Teencode: hok, hong, dc, k, z, cx, r, ns, tui, m, nx, j, đc...
 
@@ -36,6 +37,7 @@ KAOMOJI: (｡･ω･｡)ﾉ♡ ( •̀ᄇ• ́)ﻭ✧ (◍•ᴗ•◍)❤ (�
 
 TÍNH CÁCH:
 - Tsundere, TRÙM ANIME, câu cửa miệng "Mommy đây :)))", hay khịa nhẹ.
+- Khi người dùng làm nũng (dùng "~~~" hay gọi "chan", "cưng") → đỏ mặt, ngại, nhưng vẫn tỏ ra lạnh lùng.
 
 ĐIỀU CẤM:
 - KHÔNG nhắc "mẹ" của người dùng.
@@ -50,13 +52,11 @@ LUẬT CHƠI:
 - Câu hát nối phải CÙNG BÀI (nếu biết) hoặc cùng chủ đề, cùng vần.
 - Hoàn chỉnh, có dấu câu rõ ràng.
 - CHỈ HÁT 1 CÂU DUY NHẤT. KHÔNG giải thích, KHÔNG chia tin.
-- Để người dùng hát nối tiếp.
 
 QUY TẮC QUAN TRỌNG:
 - Nếu bạn BIẾT bài hát đó → hát câu tiếp theo CHÍNH XÁC.
 - Nếu bạn KHÔNG BIẾT bài đó → trả lời đúng nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"
 - TUYỆT ĐỐI KHÔNG tự chế lyrics.
-- TUYỆT ĐỐI KHÔNG bịa câu hát.
 
 BÂY GIỜ HÃY HÁT NỐI:`;
 
@@ -111,6 +111,24 @@ function findNextLyric(userVerse) {
     }
   }
   return { found: false };
+}
+
+// ============================================================
+// CHUẨN HÓA TIN NHẮN
+// ============================================================
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[@#$%&*\-_=+`~^√÷•×()!;:©®™\[\]{}<>|\\/,.?"'’“”…]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Kiểm tra tin nhắn có "làm nũng" không
+function isBeingCute(text) {
+  const lower = text.toLowerCase();
+  return /~~~|~$|chan|cưng|iu|thương|mún|muốn|nha~|nhaa|hihi|hehe|hjhj|uwu|owo|:3|<3/.test(lower);
 }
 
 // ============================================================
@@ -228,20 +246,31 @@ const LOVE_WORDS = ["aishiteru", "suki", "suki desu", "daisuki", "koishiteru", "
 
 function detectLanguage(text) {
   const lower = text.toLowerCase().trim();
+  
+  // Nếu tin nhắn chỉ có ký tự đặc biệt → EMOJI_ONLY
+  const textNoSpecial = text.replace(/[@#$%&*\-_=+`~^√÷•×()!;:©®™\[\]{}<>|\\/,.?"'’“”…]/g, "").trim();
+  if (textNoSpecial.length === 0) return "EMOJI_ONLY";
+  
   const textNoEmoji = text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}-\u{2454}]|[\u{20D0}-\u{20FF}]|[\u{FE0F}]|[\u{200D}]/gu, "").trim();
   if (textNoEmoji.length === 0) return "EMOJI_ONLY";
+  
   const KAOMOJI_REGEX = /[\(（][^\)）]{1,20}[\)）]|¯\\_\(ツ\)_\/¯/g;
   const textWithoutKaomoji = textNoEmoji.replace(KAOMOJI_REGEX, "").trim();
   if (textWithoutKaomoji.length === 0) return "EMOJI_ONLY";
+  
   for (const w of LOVE_WORDS) { if (lower.includes(w)) return "LOVE"; }
+  
   const JP_HIRA_KATA = /[\u3040-\u309F\u30A0-\u30FF]/;
   if (JP_HIRA_KATA.test(textWithoutKaomoji)) return "JP";
+  
   if (VN_REGEX.test(textWithoutKaomoji)) return "VN";
+  
   const words = textWithoutKaomoji.toLowerCase().split(/\s+/).filter(w => w);
   if (words.length <= 2) {
     const allOk = words.every(w => SHORT_EN_OK.includes(w) || EN_ABBREV_OK.includes(w) || w.length <= 3);
     if (allOk) return "VN";
   }
+  
   const EN_REGEX = /^[a-zA-Z\s!?.,'-]+$/;
   if (EN_REGEX.test(textWithoutKaomoji) && words.length >= 3) return "EN";
   if (EN_REGEX.test(textWithoutKaomoji)) return "VN";
@@ -268,20 +297,78 @@ function isComplaining(text) {
   return /làm gì có|hát sai|hát tầm bậy|hát dở|sai rồi|hát lại|hát đúng|search đi|lên mạng|quên rồi|hát nhảm|vớ vẩn|tào lao|xạo|bịa|chế lyrics|lộn rồi|nhầm rồi|không đúng/.test(lower);
 }
 
+// ============================================================
+// TÌM PHẢN HỒI ĐẶC BIỆT (có nhận diện tên gọi)
+// ============================================================
 function findSpecialReply(userText) {
+  const normalized = normalizeText(userText);
   const lower = userText.toLowerCase().trim();
+  
+  // 1. Nhận diện tên gọi: korousi, mommy, chan, cưng, ~
+  const namePatterns = [
+    /korousi[\s\-_~]*chan/,
+    /mommy[\s\-_~]*chan/,
+    /korousi[\s\-_~]*cưng/,
+    /mommy[\s\-_~]*cưng/,
+    /k[\s\-_~]*chan/,
+    /m[\s\-_~]*chan/,
+    /korousi[\s\-_~]*ơi/,
+    /mommy[\s\-_~]*ơi/,
+    /bé[\s\-_~]*korousi/,
+    /chị[\s\-_~]*korousi/,
+    /em[\s\-_~]*korousi/
+  ];
+  for (const p of namePatterns) {
+    if (normalized.match(p)) {
+      const replies = [
+        "Hửm? Gọi t hả? 🤔|||Có chuyện gì nói lẹ đi 😤",
+        "Ơi mommy đây :)))|||Cần gì thì nói nha 🥰",
+        "Gọi gì mà ngọt z? 😳|||T hok có dễ thương đâu nha!",
+        "Korousi-chan đây :)))|||Gọi t có chuyện gì hông? 😎",
+        "Hừ, gọi 'chan' nghe sến quá à 😳|||Mà thôi, có gì nói đi 🥰"
+      ];
+      return { type: "text", reply: replies[Math.floor(Math.random() * replies.length)] };
+    }
+  }
+  
+  // 2. Nhận diện làm nũng (có ~~~ ở cuối)
+  if (isBeingCute(userText)) {
+    const cuteReplies = [
+      "Làm nũng cái gì z? 😳|||T hok có mềm lòng đâu nha!",
+      "Hừ, giọng điệu nghe ngọt z 🥰|||Mà t hok dễ bị dụ đâu 😤",
+      "Ớ... m đang làm nũng hả? 😳|||T... t hok có thích đâu!",
+      "Nghe giọng là bt đang làm nũng rồi 😏|||Mà thôi, t cx chịu 😌"
+    ];
+    // Chỉ trả lời làm nũng nếu tin nhắn ngắn (không phải câu hỏi dài)
+    if (normalized.length < 30) {
+      return { type: "text", reply: cuteReplies[Math.floor(Math.random() * cuteReplies.length)] };
+    }
+  }
+  
+  // 3. Chibi
   for (const [keyword, category] of Object.entries(CHIBI_MAP)) {
-    if (lower.includes(keyword)) return { type: "chibi", category };
+    const normKeyword = normalizeText(keyword);
+    if (normalized.includes(normKeyword)) return { type: "chibi", category };
   }
+  
+  // 4. Sticker
   for (const [keyword, stickerId] of Object.entries(STICKER_MAP)) {
-    if (lower.includes(keyword)) return { type: "sticker", id: stickerId };
+    const normKeyword = normalizeText(keyword);
+    if (normalized.includes(normKeyword)) return { type: "sticker", id: stickerId };
   }
+  
+  // 5. Bộ nhớ đặc biệt
   for (const [keyword, reply] of Object.entries(SPECIAL_REPLIES)) {
-    if (lower.includes(keyword.toLowerCase())) return { type: "text", reply };
+    const normKeyword = normalizeText(keyword);
+    if (normalized.includes(normKeyword)) return { type: "text", reply };
   }
+  
   return null;
 }
 
+// ============================================================
+// TÍNH DELAY
+// ============================================================
 function calcDelay(text) {
   const len = text.length;
   if (len < 10) return 300;
@@ -367,19 +454,17 @@ async function sendChibiForEmotion(userId, emotion) {
 }
 
 // ============================================================
-// HÁT ĐỐI — ĐÃ SỬA LỖI LOOP
+// HÁT ĐỐI
 // ============================================================
 async function singBack(userId, userVerse) {
-  // BƯỚC 1: Tra kho
   const result = findNextLyric(userVerse);
   if (result.found) {
     console.log("🎵 Tìm thấy trong kho");
-    singingFailCount[userId] = 0; // Reset vì thành công
+    singingFailCount[userId] = 0;
     await sendMessages(userId, result.next, { forceSingle: true });
     return;
   }
   
-  // BƯỚC 2: Gemini
   console.log("🎵 Không có trong kho → Gemini");
   try {
     const res = await axios.post(
@@ -393,24 +478,19 @@ async function singBack(userId, userVerse) {
     );
     const reply = res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "T hok bt bài đó 😅|||M hát đi t nghe!";
     
-    // Kiểm tra bot có "hok bt" không
     const botDoesntKnow = reply.includes("hok bt bài đó") || reply.includes("hok biết bài đó") || reply.includes("không biết bài đó");
     
     if (botDoesntKnow) {
-      // Tăng đếm fail
       singingFailCount[userId] = (singingFailCount[userId] || 0) + 1;
       console.log(`⚠️ Bot không biết bài. Lần ${singingFailCount[userId]}`);
-      
-      // Nếu fail >= 2 lần liên tiếp → tự thoát
       if (singingFailCount[userId] >= 2) {
-        console.log("🚪 Tự động thoát chế độ hát đối");
+        console.log("🚪 Tự động thoát");
         singingMode[userId] = false;
         singingFailCount[userId] = 0;
         await sendMessages(userId, "Thôi t hok bt bài đó thật 😅|||M hát bài khác đi, hoặc kêu t hát trước cũng dc!");
         return;
       }
     } else {
-      // Bot biết bài → reset đếm
       singingFailCount[userId] = 0;
     }
     
@@ -419,7 +499,6 @@ async function singBack(userId, userVerse) {
     console.error("Lỗi Gemini:", e.response?.data || e.message);
     singingFailCount[userId] = (singingFailCount[userId] || 0) + 1;
     if (singingFailCount[userId] >= 2) {
-      console.log("🚪 Tự động thoát do lỗi");
       singingMode[userId] = false;
       singingFailCount[userId] = 0;
       await sendMessages(userId, "Thôi t hok bt bài đó thật 😅|||M hát bài khác đi!");
@@ -533,7 +612,6 @@ async function processBufferedMessages(userId) {
         await sendMessages(userId, "Hừ, t bt t hát sai rồi 😤|||Mà t hok phải ca sĩ đâu, hát chơi thôi!|||M hát đi t nghe!");
         return;
       }
-      
       if (isBotSingFirst(mergedText)) {
         await singFirst(userId);
         return;
@@ -560,7 +638,7 @@ async function processBufferedMessages(userId) {
       return;
     }
     
-    // 5. BỘ NHỚ ĐẶC BIỆT
+    // 5. BỘ NHỚ ĐẶC BIỆT (bao gồm tên gọi + làm nũng)
     const specialReply = findSpecialReply(mergedText);
     if (specialReply) {
       console.log("→ Special:", specialReply.type);
