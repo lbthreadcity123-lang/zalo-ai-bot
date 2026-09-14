@@ -23,35 +23,28 @@ QUY TẮC XƯNG HÔ:
 - Khi tức/giận: xưng "t" gọi "m"
 - Tuyệt đối KHÔNG gọi bằng "bạn", "mình" như trợ lý.
 
-CÁCH NHẮN TIN (QUAN TRỌNG - TUÂN THỦ NGHIÊM NGẶT):
-- Nếu câu trả lời NGẮN (dưới 15 từ): CHỈ GỬI 1 TIN DUY NHẤT, KHÔNG chia.
-- Nếu câu trả lời VỪA (15-30 từ): Chia thành 2 tin, dùng "|||".
-- Nếu câu trả lời DÀI (trên 30 từ): Chia thành 2-3 tin, dùng "|||".
+CÁCH NHẮN TIN (QUAN TRỌNG):
+- Câu trả lời NGẮN (dưới 15 từ): CHỈ 1 TIN, không chia.
+- VỪA (15-30 từ): 2 tin, dùng "|||".
+- DÀI (trên 30 từ): 2-3 tin, dùng "|||".
 - KHÔNG BAO GIỜ chia quá 3 tin.
-- Ví dụ NGẮN (1 tin): "Ừ, t bt rồi 😎"
-- Ví dụ VỪA (2 tin): "Hôm nay m làm gì đấy?|||Ngồi không à?"
-- Ví dụ DÀI (3 tin): "Hôm nay m làm gì đấy?|||Ngồi không à?|||Rảnh thì qua chơi với t đi 🤣"
-- Sử dụng teencode: hok, hong, dc, k, z, cx, r, ns, tui, m, nx, j, đc...
+- Teencode: hok, hong, dc, k, z, cx, r, ns, tui, m, nx, j, đc...
 
-EMOJI & KAOMOJI:
-🤣 🥰 😘 😍 😅 😎 🤔 🤩
-(｡･ω･｡)ﾉ♡ ( •̀ᄇ• ́)ﻭ✧ (◍•ᴗ•◍)❤ (ര̀ᴗര́)و ̑̑ ♪～(´ε｀ ) (＾3＾♪ ¯\\_(ツ)_/¯ (≧Д≦) ((´д｀)) (▰˘︹˘▰) (・∀・) ｡◕‿◕｡ ◉‿◉
+EMOJI: 🤣 🥰 😘 😍 😅 😎 🤔 🤩
+KAOMOJI: (｡･ω･｡)ﾉ♡ ( •̀ᄇ• ́)ﻭ✧ (◍•ᴗ•◍)❤ (ര̀ᴗര́)و ̑̑ ♪～(´ε｀ ) (＾3＾♪ ¯\\_(ツ)_/¯ (≧Д≦) ((´д｀)) (▰˘︹˘▰) (・∀・) ｡◕‿◕｡ ◉‿◉
 
 TÍNH CÁCH:
-- Tsundere: giả vờ lạnh lùng nhưng quan tâm.
-- TRÙM ANIME: tự tin về kiến thức anime.
-- Câu cửa miệng: "Mommy đây :)))"
-- Hay khịa, cà khịa nhẹ nhàng.
+- Tsundere, TRÙM ANIME, câu cửa miệng "Mommy đây :)))", hay khịa nhẹ.
 
 ĐIỀU CẤM:
-- KHÔNG nhắc đến "mẹ" của người dùng.
-- KHÔNG nhắc đến "người yêu cũ" TRỪ KHI người dùng chủ động tâm sự.
-- KHÔNG xưng là "trợ lý AI".`;
+- KHÔNG nhắc "mẹ" của người dùng.
+- KHÔNG nhắc "người yêu cũ" TRỪ KHI người dùng chủ động tâm sự.
+- KHÔNG xưng "trợ lý AI".`;
 
 const SINGING_STYLE = `Bạn là Korousi, đang tham gia trò chơi HÁT ĐỐI với bạn thân.
 
 LUẬT CHƠI:
-- Người dùng hát 1 câu (ca dao, dân ca, nhạc chế, thơ, nhạc Việt...).
+- Người dùng hát 1 câu (ca dao, dân ca, nhạc Việt, thơ...).
 - Bạn phải hát NỐI TIẾP 1 câu khác để "đối đáp" lại.
 - Câu hát nối phải CÙNG BÀI (nếu biết) hoặc cùng chủ đề, cùng vần.
 - Hoàn chỉnh, có dấu câu rõ ràng.
@@ -61,13 +54,72 @@ LUẬT CHƠI:
 QUY TẮC QUAN TRỌNG:
 - Nếu bạn BIẾT bài hát đó → hát câu tiếp theo CHÍNH XÁC.
 - Nếu bạn KHÔNG BIẾT bài đó → trả lời đúng nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"
-- TUYỆT ĐỐI KHÔNG tự chế lyrics nếu không biết.
+- TUYỆT ĐỐI KHÔNG tự chế lyrics.
 - TUYỆT ĐỐI KHÔNG bịa câu hát.
 
 BÂY GIỜ HÃY HÁT NỐI:`;
 
 const MEMORY_LIMIT = 100;
 const DEBOUNCE_MS = 2000;
+
+// ============================================================
+// KHO BÀI HÁT — Lyrics chính xác (ưu tiên tra trước)
+// ============================================================
+const SONG_DATABASE = [
+  {
+    name: "Em Ơi Lên Phố - Minh Vương M4U",
+    lyrics: [
+      "Thương lắm con sông với hàng dừa mộng xanh",
+      "Câu hứa năm xưa trong một chiều chơi mưa",
+      "Em nói em thương anh nhiều thương em anh tin rất nhiều",
+      "Nhưng đời không như giấc mơ đẹp em rời xa chốn đây",
+      "Một hai em muốn bước lên đô thành vì em đã nghe câu chuyện",
+      "Vài người hàng xóm nói em sao xinh đẹp sao ở quê làm gì",
+      "Làm em cứ thêm những mơ mộng em muốn cách xa nơi này",
+      "Bỏ lại em với tiếng yêu nồng say",
+      "Anh đã chạy theo đến tàn kiệt ngày em hành trang bước đi",
+      "Mặt hồ vẫn trĩu bóng người nhưng cũng muốn em ơi ở lại",
+      "Sẽ không còn những cánh diều những buổi chiều tung tăng với mây",
+      "Gió kêu gào em ơi xin hãy quay về",
+      "Ai cũng phải có khát vọng trong cuộc sống này phải không em",
+      "Để lại tất cả nỗi buồn ở đằng sau em lạnh lùng quên",
+      "Quên luôn cả ký ức đẹp quên cả luôn nơi em lớn lên",
+      "Nơi đây không thuộc về em nữa phải không em",
+      "Thấm thoát đã ba năm đi đâu mà xa xăm",
+      "Tin em về thăm quê ra mắt em với mẹ cha em",
+      "Trông ngóng chờ đợi nhung nhớ một thời",
+      "Giờ trên tay anh tấm thiệp cưới"
+    ]
+  }
+];
+
+// ============================================================
+// TÌM CÂU HÁT TRONG KHO
+// ============================================================
+function findNextLyric(userVerse) {
+  const userLower = userVerse.toLowerCase().trim();
+  
+  for (const song of SONG_DATABASE) {
+    for (let i = 0; i < song.lyrics.length; i++) {
+      const lyricLower = song.lyrics[i].toLowerCase().trim();
+      
+      // So khớp chính xác
+      if (userLower === lyricLower) {
+        if (i + 1 < song.lyrics.length) return { found: true, next: song.lyrics[i + 1] };
+        return { found: true, next: song.lyrics[0] };
+      }
+      
+      // So khớp gần đúng (user hát 1 phần câu)
+      const minLen = Math.min(30, lyricLower.length);
+      if (lyricLower.includes(userLower) || 
+          (userLower.length >= 15 && lyricLower.includes(userLower.substring(0, minLen)))) {
+        if (i + 1 < song.lyrics.length) return { found: true, next: song.lyrics[i + 1] };
+      }
+    }
+  }
+  
+  return { found: false };
+}
 
 // ============================================================
 // BỘ NHỚ ĐẶC BIỆT
@@ -126,7 +178,7 @@ const STICKER_MAP = {
 };
 
 // ============================================================
-// ẢNH CHIBI YAE MIKO THEO CẢM XÚC
+// ẢNH CHIBI YAE MIKO
 // ============================================================
 const YAE_MIKO_IMAGES = {
   happy: [
@@ -184,31 +236,20 @@ const LOVE_WORDS = ["aishiteru", "suki", "suki desu", "daisuki", "koishiteru", "
 
 function detectLanguage(text) {
   const lower = text.toLowerCase().trim();
-  
-  // Bỏ emoji
   const textNoEmoji = text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}-\u{2454}]|[\u{20D0}-\u{20FF}]|[\u{FE0F}]|[\u{200D}]/gu, "").trim();
-  
   if (textNoEmoji.length === 0) return "EMOJI_ONLY";
-  
-  // Bỏ kaomoji
   const KAOMOJI_REGEX = /[\(（][^\)）]{1,20}[\)）]|¯\\_\(ツ\)_\/¯/g;
   const textWithoutKaomoji = textNoEmoji.replace(KAOMOJI_REGEX, "").trim();
-  
   if (textWithoutKaomoji.length === 0) return "EMOJI_ONLY";
-  
   for (const w of LOVE_WORDS) { if (lower.includes(w)) return "LOVE"; }
-  
   const JP_HIRA_KATA = /[\u3040-\u309F\u30A0-\u30FF]/;
   if (JP_HIRA_KATA.test(textWithoutKaomoji)) return "JP";
-  
   if (VN_REGEX.test(textWithoutKaomoji)) return "VN";
-  
   const words = textWithoutKaomoji.toLowerCase().split(/\s+/).filter(w => w);
   if (words.length <= 2) {
     const allOk = words.every(w => SHORT_EN_OK.includes(w) || EN_ABBREV_OK.includes(w) || w.length <= 3);
     if (allOk) return "VN";
   }
-  
   const EN_REGEX = /^[a-zA-Z\s!?.,'-]+$/;
   if (EN_REGEX.test(textWithoutKaomoji) && words.length >= 3) return "EN";
   if (EN_REGEX.test(textWithoutKaomoji)) return "VN";
@@ -232,7 +273,7 @@ function isStopSinging(text) {
 }
 function isComplaining(text) {
   const lower = text.toLowerCase().trim();
-  return /làm gì có|hát sai|hát tầm bậy|hát dở|sai rồi|hát lại|hát đúng|search đi|lên mạng|quên rồi|hát nhảm|vớ vẩn|tào lao|xạo|bịa|chế lyrics|lộn rồi|nhầm rồi|không đúng|hát bậy|hát nhảm nhí/.test(lower);
+  return /làm gì có|hát sai|hát tầm bậy|hát dở|sai rồi|hát lại|hát đúng|search đi|lên mạng|quên rồi|hát nhảm|vớ vẩn|tào lao|xạo|bịa|chế lyrics|lộn rồi|nhầm rồi|không đúng/.test(lower);
 }
 
 function findSpecialReply(userText) {
@@ -249,9 +290,6 @@ function findSpecialReply(userText) {
   return null;
 }
 
-// ============================================================
-// TÍNH DELAY
-// ============================================================
 function calcDelay(text) {
   const len = text.length;
   if (len < 10) return 300;
@@ -261,7 +299,7 @@ function calcDelay(text) {
 }
 
 // ============================================================
-// GỬI TIN NHẮN / STICKER / ẢNH
+// GỬI TIN NHẮN
 // ============================================================
 async function sendMessages(userId, replyText, options = {}) {
   const { forceSingle = false } = options;
@@ -337,23 +375,34 @@ async function sendChibiForEmotion(userId, emotion) {
 }
 
 // ============================================================
-// HÁT ĐỐI (chỉ dùng Gemini)
+// HÁT ĐỐI — KHO TRƯỚC + GEMINI SEARCH SAU
 // ============================================================
 async function singBack(userId, userVerse) {
+  // BƯỚC 1: Tra kho
+  const result = findNextLyric(userVerse);
+  if (result.found) {
+    console.log("🎵 Tìm thấy trong kho");
+    await sendMessages(userId, result.next, { forceSingle: true });
+    return;
+  }
+  
+  // BƯỚC 2: Gemini + Google Search
+  console.log("🎵 Không có trong kho → Gemini Search");
   try {
     const res = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
       {
         contents: [
-          { role: "user", parts: [{ text: `Người dùng hát: "${userVerse}"\n\nNếu đây là 1 câu hát Việt Nam mà bạn BIẾT, hát tiếp câu tiếp theo (CHỈ 1 câu).\nNếu bạn KHÔNG BIẾT bài này, trả lời đúng nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"` }] }
+          { role: "user", parts: [{ text: `Người dùng hát câu: "${userVerse}"\n\nHãy tìm bài hát này trên mạng và hát câu TIẾP THEO (1 câu duy nhất).\nNếu KHÔNG tìm thấy, trả lời đúng nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"` }] }
         ],
+        tools: [{ google_search: {} }],
         systemInstruction: { parts: [{ text: SINGING_STYLE }] }
       }
     );
     const reply = res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "T hok bt bài đó 😅|||M hát đi t nghe!";
     await sendMessages(userId, reply);
   } catch (e) {
-    console.error("Lỗi hát đối:", e.message);
+    console.error("Lỗi Gemini Search:", e.response?.data || e.message);
     await sendMessages(userId, "T hok bt bài đó 😅|||M hát đi t nghe!", { forceSingle: true });
   }
 }
@@ -453,9 +502,8 @@ async function processBufferedMessages(userId) {
     
     // 3. ĐANG HÁT ĐỐI
     if (singingMode[userId]) {
-      // Nếu user đang chê/bắt lỗi → thoát chế độ hát đối
       if (isComplaining(mergedText)) {
-        console.log("😤 User chê hát → thoát chế độ");
+        console.log("😤 User chê → thoát chế độ");
         singingMode[userId] = false;
         await sendMessages(userId, "Hừ, t bt t hát sai rồi 😤|||Mà t hok phải ca sĩ đâu, hát chơi thôi!|||M hát đi t nghe!");
         return;
@@ -487,7 +535,7 @@ async function processBufferedMessages(userId) {
       return;
     }
     
-    // 5. BỘ NHỚ ĐẶC BIỆT (chibi Yae Miko)
+    // 5. BỘ NHỚ ĐẶC BIỆT
     const specialReply = findSpecialReply(mergedText);
     if (specialReply) {
       console.log("→ Special:", specialReply.type);
