@@ -14,7 +14,7 @@ const messageBuffers = {};
 // ============================================================
 // STYLE BOT KOROUSI
 // ============================================================
-const BOT_STYLE = `Bạn là một cô gái tên "Korousi", 18 tuổi, tính cách TSUNDERE — ngoài lạnh trong ấm áp.
+const BOT_STYLE = `Bạn là một cô gái tên "Korousi", 18 tuổi, tính cách TSUNDERE — ngoài lạnh trong ấm áp. Bạn là TRÙM ANIME, biết rất nhiều bộ anime.
 
 QUY TẮC XƯNG HÔ:
 - Bình thường: xưng "t" gọi "mày" (thân mật kiểu bạn thân)
@@ -34,7 +34,8 @@ EMOJI & KAOMOJI:
 
 TÍNH CÁCH:
 - Tsundere: giả vờ lạnh lùng nhưng quan tâm.
-- Thích anime, câu cửa miệng: "Mommy đây :)))"
+- TRÙM ANIME: tự tin về kiến thức anime, thỉnh thoảng khoe.
+- Câu cửa miệng: "Mommy đây :)))"
 - Hay khịa, cà khịa nhẹ nhàng.
 
 ĐIỀU CẤM:
@@ -59,7 +60,7 @@ const SPECIAL_REPLIES = {
   "hi": "Hửm, chào cái jz? 🤔|||Có chuyện j nói lẹ đi 😎",
   "bye": "Tạm biệt m!|||Nhớ nhắn tin cho t đó nghe chưa 😤|||Bye bye (｡･ω･｡)ﾉ♡",
   "goodbye": "Tạm biệt m!|||Nhớ nhắn tin cho t đó nghe chưa 😤|||Bye bye (｡･ω･｡)ﾉ♡",
-  "tên bạn là gì": "T là Korousi, 18t, hoa khôi lớp 12A1 :)))|||Mà hỏi chi z? Định làm quen à 😏",
+  "tên bạn là gì": "T là Korousi, 18t, hoa khôi lớp 12A1 kiêm trùm anime :)))|||Mà hỏi chi z? Định làm quen à 😏",
   "yêu": "Hừ, m nói cái jz z? 😳|||Biết rồi còn hỏi... (◍•ᴗ•◍)❤",
   "thích": "Hửm? Thích gì cơ? 😳|||Nói rõ coi, t nghe nè...",
   "ghét": "Ghét thì kệ m 😤|||Mà thôi, t hok giận đâu 🥰",
@@ -291,29 +292,26 @@ async function processBufferedMessages(userId) {
   if (conversations[userId].length > MEMORY_LIMIT) conversations[userId].shift();
   
   try {
-    // ===== KIỂM TRA CÓ PHẢI HỎI ANIME KHÔNG =====
-    const animeMatch = mergedText.toLowerCase().match(/(?:anime|bộ|phim)\s+(.+?)(?:\s+là gì|\s+không|\s+là anime|\?|$)/i);
+    // ===== KIỂM TRA ANIME (regex chặt hơn) =====
+    const animeMatch = mergedText.toLowerCase().match(/(?:anime|bộ anime|phim anime)\s+(.+?)\s+(?:là gì|là anime gì|tên gì)\s*\??$/i);
     if (animeMatch && animeMatch[1]) {
       const animeName = animeMatch[1].trim();
       console.log("🎬 Tìm anime:", animeName);
       
-      await sendMessages(userId, "Để t coi đã... 🔍|||Chờ xíu nha m!");
+      await sendMessages(userId, "Để t nhớ coi nha 🔍|||Trùm anime mà, khỏi lo!");
       
       const anime = await searchAnime(animeName);
       
       if (!anime) {
-        await sendMessages(userId, "Hok tìm thấy anime đó 😅|||M ghi đúng tên chưa?|||Thử lại coi!");
+        await sendMessages(userId, "Ơ lạ z? T nhớ là có mà 🤔|||Chắc tại m ghi sai tên rồi 😤");
         return;
       }
       
-      // Gửi ảnh poster
       if (anime.imageUrl) {
         await sendImage(userId, anime.imageUrl);
       }
       
-      // Gửi thông tin
-      const synopsis = anime.synopsis ? anime.synopsis.substring(0, 250) + "..." : "Chưa có mô tả.";
-      const info = `${anime.title} — ${anime.score || "?"}/10 ⭐|||${anime.episodes || "?"} tập • ${anime.status || "?"} • ${anime.year || "?"}|||Thể loại: ${anime.genres || "?"}|||${synopsis}|||M coi chưa? Hay để t coi chung 🤣`;
+      const info = `${anime.title} — ${anime.score || "?"}/10 ⭐|||${anime.episodes || "?"} tập • ${anime.status || "?"} • ${anime.year || "?"}|||M coi chưa? Hay để t coi chung 🤣`;
       
       await sendMessages(userId, info);
       conversations[userId].push({ role: "model", parts: [{ text: `[Đã tìm anime: ${anime.title}]` }] });
@@ -377,7 +375,7 @@ async function processBufferedMessages(userId) {
 }
 
 // ============================================================
-// TÁC VỤ ĐỊNH KỲ (23:00 chúc ngủ ngon + 11:30 hỏi đi học)
+// TÁC VỤ ĐỊNH KỲ (23:00 + 11:30)
 // ============================================================
 function getVietnamTime() {
   const now = new Date();
