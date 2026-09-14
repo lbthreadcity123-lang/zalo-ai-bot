@@ -11,6 +11,7 @@ const USER_ID = "5337e4daad8644d81d97";
 const conversations = {};
 const messageBuffers = {};
 const singingMode = {};
+const singingFailCount = {};
 
 // ============================================================
 // STYLE BOT KOROUSI
@@ -63,7 +64,7 @@ const MEMORY_LIMIT = 100;
 const DEBOUNCE_MS = 2000;
 
 // ============================================================
-// KHO BÀI HÁT — Lyrics chính xác (ưu tiên tra trước)
+// KHO BÀI HÁT
 // ============================================================
 const SONG_DATABASE = [
   {
@@ -93,23 +94,15 @@ const SONG_DATABASE = [
   }
 ];
 
-// ============================================================
-// TÌM CÂU HÁT TRONG KHO
-// ============================================================
 function findNextLyric(userVerse) {
   const userLower = userVerse.toLowerCase().trim();
-  
   for (const song of SONG_DATABASE) {
     for (let i = 0; i < song.lyrics.length; i++) {
       const lyricLower = song.lyrics[i].toLowerCase().trim();
-      
-      // So khớp chính xác
       if (userLower === lyricLower) {
         if (i + 1 < song.lyrics.length) return { found: true, next: song.lyrics[i + 1] };
         return { found: true, next: song.lyrics[0] };
       }
-      
-      // So khớp gần đúng (user hát 1 phần câu)
       const minLen = Math.min(30, lyricLower.length);
       if (lyricLower.includes(userLower) || 
           (userLower.length >= 15 && lyricLower.includes(userLower.substring(0, minLen)))) {
@@ -117,7 +110,6 @@ function findNextLyric(userVerse) {
       }
     }
   }
-  
   return { found: false };
 }
 
@@ -269,7 +261,7 @@ function isBotSingFirst(text) {
 }
 function isStopSinging(text) {
   const lower = text.toLowerCase().trim();
-  return /thôi\s+hok\s+hát|dừng\s+hát|ngưng\s+hát|hok\s+hát\s+nữa|kết\s+thúc\s+hát|stop\s+hát/.test(lower);
+  return /thôi\s+hok\s+hát|dừng\s+hát|ngưng\s+hát|hok\s+hát\s+nữa|kết\s+thúc\s+hát|stop\s+hát|thôi\s+dừng|dừng\s+đi|thoát\s+hát|hát\s+bài\s+khác/.test(lower);
 }
 function isComplaining(text) {
   const lower = text.toLowerCase().trim();
@@ -375,35 +367,65 @@ async function sendChibiForEmotion(userId, emotion) {
 }
 
 // ============================================================
-// HÁT ĐỐI — KHO TRƯỚC + GEMINI SEARCH SAU
+// HÁT ĐỐI — ĐÃ SỬA LỖI LOOP
 // ============================================================
 async function singBack(userId, userVerse) {
   // BƯỚC 1: Tra kho
   const result = findNextLyric(userVerse);
   if (result.found) {
     console.log("🎵 Tìm thấy trong kho");
+    singingFailCount[userId] = 0; // Reset vì thành công
     await sendMessages(userId, result.next, { forceSingle: true });
     return;
   }
   
-  // BƯỚC 2: Gemini + Google Search
-  console.log("🎵 Không có trong kho → Gemini Search");
+  // BƯỚC 2: Gemini
+  console.log("🎵 Không có trong kho → Gemini");
   try {
     const res = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         contents: [
-          { role: "user", parts: [{ text: `Người dùng hát câu: "${userVerse}"\n\nHãy tìm bài hát này trên mạng và hát câu TIẾP THEO (1 câu duy nhất).\nNếu KHÔNG tìm thấy, trả lời đúng nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"` }] }
+          { role: "user", parts: [{ text: `Người dùng hát: "${userVerse}"\n\nNếu biết bài, hát 1 câu nối. Nếu KHÔNG biết, trả lời nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"` }] }
         ],
-        tools: [{ google_search: {} }],
         systemInstruction: { parts: [{ text: SINGING_STYLE }] }
       }
     );
     const reply = res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "T hok bt bài đó 😅|||M hát đi t nghe!";
+    
+    // Kiểm tra bot có "hok bt" không
+    const botDoesntKnow = reply.includes("hok bt bài đó") || reply.includes("hok biết bài đó") || reply.includes("không biết bài đó");
+    
+    if (botDoesntKnow) {
+      // Tăng đếm fail
+      singingFailCount[userId] = (singingFailCount[userId] || 0) + 1;
+      console.log(`⚠️ Bot không biết bài. Lần ${singingFailCount[userId]}`);
+      
+      // Nếu fail >= 2 lần liên tiếp → tự thoát
+      if (singingFailCount[userId] >= 2) {
+        console.log("🚪 Tự động thoát chế độ hát đối");
+        singingMode[userId] = false;
+        singingFailCount[userId] = 0;
+        await sendMessages(userId, "Thôi t hok bt bài đó thật 😅|||M hát bài khác đi, hoặc kêu t hát trước cũng dc!");
+        return;
+      }
+    } else {
+      // Bot biết bài → reset đếm
+      singingFailCount[userId] = 0;
+    }
+    
     await sendMessages(userId, reply);
   } catch (e) {
-    console.error("Lỗi Gemini Search:", e.response?.data || e.message);
-    await sendMessages(userId, "T hok bt bài đó 😅|||M hát đi t nghe!", { forceSingle: true });
+    console.error("Lỗi Gemini:", e.response?.data || e.message);
+    singingFailCount[userId] = (singingFailCount[userId] || 0) + 1;
+    if (singingFailCount[userId] >= 2) {
+      console.log("🚪 Tự động thoát do lỗi");
+      singingMode[userId] = false;
+      singingFailCount[userId] = 0;
+      await sendMessages(userId, "Thôi t hok bt bài đó thật 😅|||M hát bài khác đi!");
+    } else {
+      await sendMessages(userId, "T hok bt bài đó 😅|||M hát đi t nghe!", { forceSingle: true });
+    }
   }
 }
 
@@ -482,6 +504,7 @@ async function processBufferedMessages(userId) {
     if (isStopSinging(mergedText)) {
       console.log("🎤 Dừng hát đối");
       singingMode[userId] = false;
+      singingFailCount[userId] = 0;
       await sendMessages(userId, "Ừ thôi cx dc, hát mệt r 😤|||Khi nào mún hát tiếp thì kêu t nha!");
       return;
     }
@@ -490,6 +513,7 @@ async function processBufferedMessages(userId) {
     if (isSingingInvite(mergedText)) {
       console.log("🎤 Mời hát đối");
       singingMode[userId] = true;
+      singingFailCount[userId] = 0;
       if (isBotSingFirst(mergedText)) {
         await sendMessages(userId, "Oce, t hát trước nha 🎤", { forceSingle: true });
         await new Promise(r => setTimeout(r, 600));
@@ -505,6 +529,7 @@ async function processBufferedMessages(userId) {
       if (isComplaining(mergedText)) {
         console.log("😤 User chê → thoát chế độ");
         singingMode[userId] = false;
+        singingFailCount[userId] = 0;
         await sendMessages(userId, "Hừ, t bt t hát sai rồi 😤|||Mà t hok phải ca sĩ đâu, hát chơi thôi!|||M hát đi t nghe!");
         return;
       }
