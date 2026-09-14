@@ -51,18 +51,18 @@ TÍNH CÁCH:
 const SINGING_STYLE = `Bạn là Korousi, đang tham gia trò chơi HÁT ĐỐI với bạn thân.
 
 LUẬT CHƠI:
-- Người dùng hát 1 câu (ca dao, dân ca, nhạc chế, thơ...).
+- Người dùng hát 1 câu (ca dao, dân ca, nhạc chế, thơ, nhạc Việt...).
 - Bạn phải hát NỐI TIẾP 1 câu khác để "đối đáp" lại.
-- Câu hát nối phải cùng chủ đề, cùng vần, hoặc đối đáp lại nội dung.
+- Câu hát nối phải CÙNG BÀI (nếu biết) hoặc cùng chủ đề, cùng vần.
 - Hoàn chỉnh, có dấu câu rõ ràng.
 - CHỈ HÁT 1 CÂU DUY NHẤT. KHÔNG giải thích, KHÔNG chia tin.
 - Để người dùng hát nối tiếp.
 
-VÍ DỤ:
-- User: "Rành thì là mạ em thích lấy chồng miền bắc"
-  → Bạn: "Thích nghe câu quan họ gõ mỏ tụng kinh không?"
-- User: "Con cò bay lả bay la"
-  → Bạn: "Bay từ cửa phủ bay ra cánh đồng"
+QUY TẮC QUAN TRỌNG:
+- Nếu bạn BIẾT bài hát đó → hát câu tiếp theo CHÍNH XÁC.
+- Nếu bạn KHÔNG BIẾT bài đó → trả lời đúng nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"
+- TUYỆT ĐỐI KHÔNG tự chế lyrics nếu không biết.
+- TUYỆT ĐỐI KHÔNG bịa câu hát.
 
 BÂY GIỜ HÃY HÁT NỐI:`;
 
@@ -230,6 +230,10 @@ function isStopSinging(text) {
   const lower = text.toLowerCase().trim();
   return /thôi\s+hok\s+hát|dừng\s+hát|ngưng\s+hát|hok\s+hát\s+nữa|kết\s+thúc\s+hát|stop\s+hát/.test(lower);
 }
+function isComplaining(text) {
+  const lower = text.toLowerCase().trim();
+  return /làm gì có|hát sai|hát tầm bậy|hát dở|sai rồi|hát lại|hát đúng|search đi|lên mạng|quên rồi|hát nhảm|vớ vẩn|tào lao|xạo|bịa|chế lyrics|lộn rồi|nhầm rồi|không đúng|hát bậy|hát nhảm nhí/.test(lower);
+}
 
 function findSpecialReply(userText) {
   const lower = userText.toLowerCase().trim();
@@ -333,22 +337,24 @@ async function sendChibiForEmotion(userId, emotion) {
 }
 
 // ============================================================
-// HÁT ĐỐI
+// HÁT ĐỐI (chỉ dùng Gemini)
 // ============================================================
 async function singBack(userId, userVerse) {
   try {
     const res = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
-        contents: [{ role: "user", parts: [{ text: `Người dùng hát: "${userVerse}"\n\nHát nối tiếp 1 câu duy nhất.` }] }],
+        contents: [
+          { role: "user", parts: [{ text: `Người dùng hát: "${userVerse}"\n\nNếu đây là 1 câu hát Việt Nam mà bạn BIẾT, hát tiếp câu tiếp theo (CHỈ 1 câu).\nNếu bạn KHÔNG BIẾT bài này, trả lời đúng nguyên văn: "T hok bt bài đó 😅|||M hát đi t nghe!"` }] }
+        ],
         systemInstruction: { parts: [{ text: SINGING_STYLE }] }
       }
     );
-    const reply = res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Con cò bay lả bay la...";
-    await sendMessages(userId, reply, { forceSingle: true });
+    const reply = res.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "T hok bt bài đó 😅|||M hát đi t nghe!";
+    await sendMessages(userId, reply);
   } catch (e) {
     console.error("Lỗi hát đối:", e.message);
-    await sendMessages(userId, "T hok bt hát câu đó 😅", { forceSingle: true });
+    await sendMessages(userId, "T hok bt bài đó 😅|||M hát đi t nghe!", { forceSingle: true });
   }
 }
 
@@ -447,6 +453,14 @@ async function processBufferedMessages(userId) {
     
     // 3. ĐANG HÁT ĐỐI
     if (singingMode[userId]) {
+      // Nếu user đang chê/bắt lỗi → thoát chế độ hát đối
+      if (isComplaining(mergedText)) {
+        console.log("😤 User chê hát → thoát chế độ");
+        singingMode[userId] = false;
+        await sendMessages(userId, "Hừ, t bt t hát sai rồi 😤|||Mà t hok phải ca sĩ đâu, hát chơi thôi!|||M hát đi t nghe!");
+        return;
+      }
+      
       if (isBotSingFirst(mergedText)) {
         await singFirst(userId);
         return;
@@ -513,7 +527,6 @@ async function processBufferedMessages(userId) {
     const lang = detectLanguage(mergedText);
     console.log("→ Ngôn ngữ:", lang);
     
-    // EMOJI_ONLY
     if (lang === "EMOJI_ONLY") {
       const emojiReplies = [
         "Cười cái j mà vui z? 🤣|||Có chuyện gì kể t nghe coi!",
