@@ -827,11 +827,20 @@ app.post("/webhook", async (req, res) => {
     }, DEBOUNCE_MS);
     
     res.status(200).send("OK");
-  } catch (err) {
-    console.error("Lỗi:", err.response?.data || err.message);
-    res.status(500).send("Error");
+  }   } catch (err) {
+    console.error("Lỗi xử lý:", err.response?.data || err.message);
+    
+    // Nếu lỗi quota Gemini (429) → báo user đợi
+    const errCode = err.response?.data?.error?.code;
+    if (errCode === 429) {
+      try {
+        await sendMessages(userId, "T đang mệt xíu 🥱|||Đợi t 1 phút rồi nhắn lại nha!");
+      } catch (e) {
+        console.error("Không gửi được tin báo quota:", e.message);
+      }
+    }
   }
-});
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
