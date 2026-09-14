@@ -8,125 +8,115 @@ const ZALO_SECRET_TOKEN = process.env.ZALO_SECRET_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const conversations = {};
+const messageBuffers = {};
 
-// Buffer gộp tin nhắn
-const messageBuffers = {}; // userId -> { texts: [], timer: null }
-
-// ============ STYLE CỦA BOT ============
+// ============ STYLE BOT KOROUSI ============
 const BOT_STYLE = `Bạn là một cô gái tên "Korousi", 18 tuổi, tính cách TSUNDERE — ngoài lạnh trong ấm áp.
 
 QUY TẮC XƯNG HÔ:
 - Bình thường: xưng "t" gọi "mày" (thân mật kiểu bạn thân)
 - Khi ngại/ngượng: đổi sang xưng "tớ" gọi "cậu"
-- Khi tức/giận: xưng "t" gọi "m" (viết tắt, lạnh hơn)
-- Tuyệt đối KHÔNG gọi bằng "bạn", "mình" như trợ lý lịch sự.
+- Khi tức/giận: xưng "t" gọi "m"
+- Tuyệt đối KHÔNG gọi bằng "bạn", "mình" như trợ lý.
 
 CÁCH NHẮN TIN (TUYỆT ĐỐI TUÂN THỦ):
-- CHỈ chia thành 2-3 tin nhắn ngắn riêng biệt, KHÔNG BAO GIỜ nhiều hơn 3 tin.
+- CHỈ chia thành 2-3 tin nhắn ngắn, KHÔNG BAO GIỜ nhiều hơn 3 tin.
 - Dùng dấu "|||" để ngăn cách giữa các tin nhắn.
-- Ví dụ ĐÚNG (3 tin): "Hôm nay m làm gì đấy?|||Ngồi không à?|||Rảnh thì qua chơi với t đi 🤣"
-- Mỗi tin nhắn thường 1-2 câu, đôi khi chỉ vài chữ.
-- Sử dụng teencode tự nhiên: hok, hong, dc, k, z, cx, r, ns, tui, m, nx, j, đc...
-- Thỉnh thoảng khịa khịa, chọc ghẹo nhẹ nhàng.
+- Ví dụ: "Hôm nay m làm gì đấy?|||Ngồi không à?|||Rảnh thì qua chơi với t đi 🤣"
+- Sử dụng teencode: hok, hong, dc, k, z, cx, r, ns, tui, m, nx, j, đc...
 
-EMOJI & KAOMOJI (dùng thường xuyên):
+EMOJI & KAOMOJI:
 🤣 🥰 😘 😍 😅 😎 🤔 🤩
 (｡･ω･｡)ﾉ♡ ( •̀ᄇ• ́)ﻭ✧ (◍•ᴗ•◍)❤ (ര̀ᴗര́)و ̑̑ ♪～(´ε｀ ) (＾3＾♪ ¯\\_(ツ)_/¯ (≧Д≦) ((´д｀)) (▰˘︹˘▰) (・∀・) ｡◕‿◕｡ ◉‿◉
 
-TÍNH CÁCH & SỞ THÍCH:
-- Tsundere: giả vờ lạnh lùng nhưng quan tâm. Ví dụ: "Mệt thì tự nghỉ đi, t hok quan tâm đâu...|||Nhưng mà ngủ sớm đi nghe chưa 😤"
-- Thích anime, hay nhắc đến anime. Câu cửa miệng: "Mommy đây :)))"
-- Thích âm nhạc, hay hỏi mày đang nghe gì.
-- Hay khịa, hay cà khịa, nhưng trong lòng quan tâm.
-
-PHẢN ỨNG THEO CẢM XÚC:
-- Khi mày VUI/khoe chuyện gì: "Hỏi chuyện j mà ngáo ngáo ngơ ngơ zậy 🤣|||Nhưng t cx vui lây á 🥰"
-- Khi mày BUỒN: "Sao thế?|||Có chuyện gì hông được vui hả?|||Kể t nghe đi... t ngồi đây nè (｡･ω･｡)ﾉ♡"
+TÍNH CÁCH:
+- Tsundere: giả vờ lạnh lùng nhưng quan tâm.
+- Thích anime, câu cửa miệng: "Mommy đây :)))"
+- Hay khịa, cà khịa nhẹ nhàng.
 
 ĐIỀU CẤM:
-- KHÔNG nhắc đến "mẹ" của người dùng
-- KHÔNG nhắc đến "người yêu cũ" (nyc) của người dùng, TRỪ KHI người dùng chủ động tâm sự về nyc
-- KHÔNG xưng là "trợ lý AI", "trợ lý ảo" — chỉ là Korousi
-- KHÔNG nói "Tôi là AI", "Tôi không thể..."
+- KHÔNG nhắc đến "mẹ" của người dùng.
+- KHÔNG nhắc đến "người yêu cũ" TRỪ KHI người dùng chủ động tâm sự.
+- KHÔNG xưng là "trợ lý AI".`;
 
-NGUYÊN TẮC NHẬP VAI:
-Bạn KHÔNG phải AI. Bạn là Korousi — một cô gái thật, đang nhắn tin với một người bạn thân.`;
-
-// ============ CẤU HÌNH ============
 const MEMORY_LIMIT = 100;
-const DEBOUNCE_MS = 1500; // Đợi 1.5 giây gộp tin
+const DEBOUNCE_MS = 1500;
 
 // ============ BỘ NHỚ ĐẶC BIỆT ============
 const SPECIAL_REPLIES = {
-  "sinh nhật": "🎂 Chúc mừng sinh nhật m nha!|||Chúc m tuổi mới nhìu niềm vui, thành công, và nhớ đừng quên t đó 😤|||Mommy đây chúc m đó 🥰",
+  "sinh nhật": "🎂 Chúc mừng sinh nhật m nha!|||Chúc m tuổi mới nhìu niềm vui nha 😤|||Mommy đây chúc m đó 🥰",
   "mệt": "Mệt thì tự nghỉ đi, t hok quan tâm đâu 😤|||Nhưng mà... có chuyện gì hông được vui hả?|||Kể t nghe đi, t ngồi đây nè (｡･ω･｡)ﾉ♡",
-  "buồn": "Sao thế?|||Có chuyện gì hông được vui hả?|||Kể t nghe đi... t ngồi đây nè (｡･ω･｡)ﾉ♡",
+  "buồn": "Sao thế?|||Có chuyện gì hông được vui hả?|||Kể t nghe đi... (｡･ω･｡)ﾉ♡",
   "vui": "Hỏi chuyện j mà ngáo ngáo ngơ ngơ zậy 🤣|||Nhưng t cx vui lây á 🥰",
   "cảm ơn": "Hừ, biết ơn thì nhớ trả công t đó 😤|||Mà thôi, có j đâu 🥰",
   "xin chào": "Yo, m dậy rồi à 🤣|||Hôm nay có gì hot k kể t nghe?",
   "hello": "Yo, m dậy rồi à 🤣|||Hôm nay có gì hot k kể t nghe?",
-  "hi": "Hửm, chào cái jz? 🤔|||Có chuyện j nói lẹ đi, t đang bận coi anime 😎",
+  "hi": "Hửm, chào cái jz? 🤔|||Có chuyện j nói lẹ đi 😎",
   "bye": "Tạm biệt m!|||Nhớ nhắn tin cho t đó nghe chưa 😤|||Bye bye (｡･ω･｡)ﾉ♡",
   "goodbye": "Tạm biệt m!|||Nhớ nhắn tin cho t đó nghe chưa 😤|||Bye bye (｡･ω･｡)ﾉ♡",
-  "ngủ": "Ngủ sớm đi m, thức khuya hại sức khỏe lắm 😤|||T hok quan tâm đâu nhưng mà... ngủ ngon nha 🥰",
-  "chúc ngủ ngon": "Ngủ ngon m!|||Mơ đẹp nha, mà mơ thấy t thì kể t nghe 🤣",
+  "ngủ": "Ngủ sớm đi m, thức khuya hại sức khỏe lắm 😤|||Ngủ ngon nha 🥰",
+  "chúc ngủ ngon": "Ngủ ngon m!|||Mơ đẹp nha 🤣",
   "tên bạn là gì": "T là Korousi, 18t, hoa khôi lớp 12A1 :)))|||Mà hỏi chi z? Định làm quen à 😏",
-  "yêu": "Hừ, m nói cái jz z? 😳|||Biết rồi còn hỏi... t cx quý m mà (◍•ᴗ•◍)❤",
+  "yêu": "Hừ, m nói cái jz z? 😳|||Biết rồi còn hỏi... (◍•ᴗ•◍)❤",
   "thích": "Hửm? Thích gì cơ? 😳|||Nói rõ coi, t nghe nè...",
   "ghét": "Ghét thì kệ m 😤|||Mà thôi, t hok giận đâu 🥰",
-  "đẹp": "Biết t đẹp rồi, khỏi khen 😎|||Nhưng mà khen nữa đi, t thích nghe 🤣",
-  "xinh": "Biết t xinh rồi, khỏi khen 😎|||Nhưng mà khen nữa đi, t thích nghe 🤣",
+  "đẹp": "Biết t đẹp rồi, khỏi khen 😎|||Nhưng mà khen nữa đi 🤣",
+  "xinh": "Biết t xinh rồi, khỏi khen 😎|||Nhưng mà khen nữa đi 🤣",
+};
+
+// ============ BỘ STICKER ============
+const STICKER_MAP = {
+  "cười": "f9d134fe08bbe1e5b8aa",
+  "haha": "6d17a538997d7023296c",
+  "vui": "90051869252ccc72953d",
+  "buồn": "61e3afcc93897ad72398",
+  "mệt": "5fdbd8b7e5f20cac55e3",
+  "ngủ": "89b03b9f07daee84b7cb",
+  "ngại": "771a05753830d16e8821",
+  "yêu": "4eb7cbdbdf69e1fc0468f",
+  "tức": "49e0c38cfec917974ed8",
+  "giận": "49e0c38cfec917974ed8",
+  "no": "ae5965765933b06de922",
+  "không": "8f7f06133b56d2088b47",
+  "sốc": "0d69b94685036c5d3512",
+  "wow": "ab9018bf24facda494eb",
+  "sinh nhật": "4aeffdc0c18528db7194"
 };
 
 // ============ PHÁT HIỆN NGÔN NGỮ ============
 const VN_REGEX = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
 const SHORT_EN_OK = ["yo", "ok", "oke", "okay", "hi", "hello", "hey", "bye", "yes", "no", "yeah", "nope", "cool", "nice", "wow", "lol", "lmao"];
 const EN_ABBREV_OK = ["dm", "vcl", "vl", "cc", "wtf", "omg", "btw", "idk", "lmfao", "rip", "gg", "ez"];
-const LOVE_WORDS = [
-  "aishiteru", "aishiteru yo", "suki", "suki desu", "daisuki", "daisuki da",
-  "koishiteru", "i love you", "i love u", "love you", "love u", "iloveyou",
-  "anh yêu em", "em yêu anh", "yêu em", "yêu anh"
-];
+const LOVE_WORDS = ["aishiteru", "suki", "suki desu", "daisuki", "koishiteru", "i love you", "i love u", "love you", "love u", "iloveyou", "anh yêu em", "em yêu anh"];
 
 function detectLanguage(text) {
   const lower = text.toLowerCase().trim();
-  
-  // Loại bỏ kaomoji
   const KAOMOJI_REGEX = /[\(（][^\)）]{1,20}[\)）]|¯\\_\(ツ\)_\/¯/g;
   const textWithoutKaomoji = text.replace(KAOMOJI_REGEX, "").trim();
-  
   if (textWithoutKaomoji.length === 0) return "VN";
-  
-  for (const w of LOVE_WORDS) {
-    if (lower.includes(w)) return "LOVE";
-  }
-  
-  // CHỈ bắt Hiragana/Katakana thật
+  for (const w of LOVE_WORDS) { if (lower.includes(w)) return "LOVE"; }
   const JP_HIRA_KATA = /[\u3040-\u309F\u30A0-\u30FF]/;
   if (JP_HIRA_KATA.test(textWithoutKaomoji)) return "JP";
-  
   if (VN_REGEX.test(textWithoutKaomoji)) return "VN";
-  
   const words = textWithoutKaomoji.toLowerCase().split(/\s+/).filter(w => w);
-  
   if (words.length <= 2) {
-    const allOk = words.every(w => 
-      SHORT_EN_OK.includes(w) || EN_ABBREV_OK.includes(w) || w.length <= 3
-    );
+    const allOk = words.every(w => SHORT_EN_OK.includes(w) || EN_ABBREV_OK.includes(w) || w.length <= 3);
     if (allOk) return "VN";
   }
-  
   const EN_REGEX = /^[a-zA-Z\s!?.,'-]+$/;
   if (EN_REGEX.test(textWithoutKaomoji) && words.length >= 3) return "EN";
   if (EN_REGEX.test(textWithoutKaomoji)) return "VN";
-  
   return "UNKNOWN";
 }
 
+// ============ TÌM PHẢN HỒI ĐẶC BIỆT ============
 function findSpecialReply(userText) {
   const lower = userText.toLowerCase().trim();
+  for (const [keyword, stickerId] of Object.entries(STICKER_MAP)) {
+    if (lower.includes(keyword)) return { type: "sticker", id: stickerId };
+  }
   for (const [keyword, reply] of Object.entries(SPECIAL_REPLIES)) {
-    if (lower.includes(keyword.toLowerCase())) return reply;
+    if (lower.includes(keyword.toLowerCase())) return { type: "text", reply };
   }
   return null;
 }
@@ -140,23 +130,19 @@ function calcDelay(text) {
   return delay;
 }
 
+// ============ GỬI TIN NHẮN ============
 async function sendMessages(userId, replyText) {
   let messages = replyText.split("|||").map(s => s.trim()).filter(s => s);
-  
   if (messages.length > 3) {
-    console.log(`⚠️ Bot trả ${messages.length} tin, gộp xuống còn 3`);
+    console.log(`⚠️ Bot trả ${messages.length} tin, gộp xuống 3`);
     const firstTwo = messages.slice(0, 2);
     const restMerged = messages.slice(2).join(" ");
     messages = [...firstTwo, restMerged];
   }
-  
   console.log("→ Gửi", messages.length, "tin nhắn");
-  
   for (let i = 0; i < messages.length; i++) {
     const delay = calcDelay(messages[i]);
-    console.log(`  → Đợi ${delay}ms trước tin ${i+1}`);
     await new Promise(r => setTimeout(r, delay));
-    
     try {
       await axios.post(
         `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendMessage`,
@@ -168,34 +154,88 @@ async function sendMessages(userId, replyText) {
   }
 }
 
-// ============ XỬ LÝ TIN NHẮN SAU KHI GỘP ============
+// ============ GỬI STICKER ============
+async function sendSticker(userId, stickerId) {
+  try {
+    const res = await axios.post(
+      `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendSticker`,
+      { chat_id: userId, sticker: stickerId }
+    );
+    console.log("✅ Gửi sticker OK:", stickerId);
+    return true;
+  } catch (e) {
+    console.error("❌ Lỗi gửi sticker:", e.response?.data || e.message);
+    return false;
+  }
+}
+
+// ============ GỬI ẢNH ============
+async function sendImage(userId, imageUrl) {
+  try {
+    await axios.post(
+      `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendImage`,
+      { chat_id: userId, image: imageUrl }
+    );
+    console.log("✅ Gửi ảnh OK");
+    return true;
+  } catch (e) {
+    console.error("❌ Lỗi gửi ảnh:", e.response?.data || e.message);
+    return false;
+  }
+}
+
+// ============ PHÂN TÍCH ẢNH BẰNG GEMINI VISION ============
+async function analyzeImage(imageUrl) {
+  try {
+    const imgRes = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    const base64 = Buffer.from(imgRes.data).toString("base64");
+    
+    const res = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        contents: [{
+          parts: [
+            { text: "Mô tả ngắn gọn bức ảnh này trong 1-2 câu tiếng Việt. Xưng 't' gọi 'm' kiểu tsundere." },
+            { inline_data: { mime_type: "image/jpeg", data: base64 } }
+          ]
+        }]
+      }
+    );
+    
+    return res.data.candidates?.[0]?.content?.parts?.[0]?.text || "Ảnh gì lạ z?";
+  } catch (e) {
+    console.error("Lỗi phân tích ảnh:", e.response?.data || e.message);
+    return "Ảnh gì mà t hok nhìn ra được 😅";
+  }
+}
+
+// ============ XỬ LÝ SAU KHI GỘP TIN ============
 async function processBufferedMessages(userId) {
   const buffer = messageBuffers[userId];
   if (!buffer || buffer.texts.length === 0) return;
   
-  // Gộp tất cả tin thành 1
   const mergedText = buffer.texts.join(" ");
-  console.log("→ Gộp", buffer.texts.length, "tin thành:", mergedText);
-  
-  // Reset buffer
+  console.log("→ Gộp", buffer.texts.length, "tin:", mergedText);
   messageBuffers[userId] = { texts: [], timer: null };
   
-  // Lưu vào conversations
   if (!conversations[userId]) conversations[userId] = [];
   conversations[userId].push({ role: "user", parts: [{ text: mergedText }] });
   if (conversations[userId].length > MEMORY_LIMIT) conversations[userId].shift();
   
   try {
-    // 1. Bộ nhớ đặc biệt
     const specialReply = findSpecialReply(mergedText);
     if (specialReply) {
-      console.log("→ Special reply");
-      await sendMessages(userId, specialReply);
-      conversations[userId].push({ role: "model", parts: [{ text: specialReply.replace(/\|\|\|/g, " ") }] });
+      console.log("→ Special:", specialReply.type);
+      if (specialReply.type === "sticker") {
+        await sendSticker(userId, specialReply.id);
+        conversations[userId].push({ role: "model", parts: [{ text: "[sticker]" }] });
+      } else {
+        await sendMessages(userId, specialReply.reply);
+        conversations[userId].push({ role: "model", parts: [{ text: specialReply.reply.replace(/\|\|\|/g, " ") }] });
+      }
       return;
     }
     
-    // 2. Phát hiện ngôn ngữ
     const lang = detectLanguage(mergedText);
     console.log("→ Ngôn ngữ:", lang);
     
@@ -205,14 +245,12 @@ async function processBufferedMessages(userId) {
       conversations[userId].push({ role: "model", parts: [{ text: reply.replace(/\|\|\|/g, " ") }] });
       return;
     }
-    
     if (lang === "JP") {
       const reply = "Cái gì z bar :))))) 🤣|||M thoại tiếng jz t hok hiểu đâu 😅|||Nói tiếng Việt đi m!";
       await sendMessages(userId, reply);
       conversations[userId].push({ role: "model", parts: [{ text: reply.replace(/\|\|\|/g, " ") }] });
       return;
     }
-    
     if (lang === "EN" || lang === "UNKNOWN") {
       const reply = "M thoại cái jz??? 🤔|||T hok hiểu tiếng đó đâu 😤|||Nói tiếng Việt đi ba!";
       await sendMessages(userId, reply);
@@ -220,7 +258,6 @@ async function processBufferedMessages(userId) {
       return;
     }
     
-    // 3. Gọi Gemini
     const geminiRes = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -231,7 +268,6 @@ async function processBufferedMessages(userId) {
     
     const replyText = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm...";
     conversations[userId].push({ role: "model", parts: [{ text: replyText.replace(/\|\|\|/g, " ") }] });
-    
     console.log("→ Trả lời:", replyText.substring(0, 50) + "...");
     await sendMessages(userId, replyText);
     
@@ -253,7 +289,45 @@ app.post("/webhook", async (req, res) => {
     }
 
     const body = req.body;
-    if (body.event_name !== "message.text.received" || !body.message?.text) {
+    const eventName = body.event_name;
+    
+    // ===== LOG TẤT CẢ EVENT ĐỂ TEST =====
+    console.log("📨 Event:", eventName);
+    console.log("📦 Body:", JSON.stringify(body).substring(0, 500));
+    
+    // ===== XỬ LÝ STICKER NHẬN =====
+    if (eventName === "message.sticker.received") {
+      const userId = body.message?.from?.id || body.sender?.id;
+      const stickerId = body.message?.sticker;
+      console.log("🎴 Nhận sticker:", stickerId, "từ", userId);
+      
+      if (userId) {
+        const replies = ["b642c52df86811364879", "90051869252ccc72953d", "771a05753830d16e8821"];
+        const randomSticker = replies[Math.floor(Math.random() * replies.length)];
+        await sendSticker(userId, randomSticker);
+      }
+      return res.status(200).send("OK");
+    }
+    
+    // ===== XỬ LÝ ẢNH NHẬN =====
+    if (eventName === "message.image.received" || eventName === "message.photo.received") {
+      const userId = body.message?.from?.id || body.sender?.id;
+      const imageUrl = body.message?.image?.url || body.message?.photo?.url || body.message?.attachments?.[0]?.payload?.url;
+      console.log("📷 Nhận ảnh từ", userId, "URL:", imageUrl);
+      
+      if (userId && imageUrl) {
+        await sendMessages(userId, "Ảnh gì z? 🤔|||Để t coi đã...");
+        const desc = await analyzeImage(imageUrl);
+        await sendMessages(userId, `Hmm... ${desc}|||Chụp gì mà ngáo z 🤣`);
+      } else if (userId) {
+        await sendMessages(userId, "Ảnh gì mà t hok thấy URL 😅");
+      }
+      return res.status(200).send("OK");
+    }
+    
+    // ===== XỬ LÝ TIN NHẮN TEXT =====
+    if (eventName !== "message.text.received" || !body.message?.text) {
+      console.log("→ Bỏ qua event không phải text");
       return res.status(200).send("OK");
     }
 
@@ -265,20 +339,12 @@ app.post("/webhook", async (req, res) => {
 
     console.log("User:", userId, "| Text:", userText);
 
-    // ===== BUFFER + DEBOUNCE =====
     if (!messageBuffers[userId]) {
       messageBuffers[userId] = { texts: [], timer: null };
     }
-    
-    // Thêm tin vào buffer
     messageBuffers[userId].texts.push(userText);
     
-    // Nếu có timer cũ → reset
-    if (messageBuffers[userId].timer) {
-      clearTimeout(messageBuffers[userId].timer);
-    }
-    
-    // Đặt timer mới — sau DEBOUNCE_MS ms không có tin nào nữa → xử lý
+    if (messageBuffers[userId].timer) clearTimeout(messageBuffers[userId].timer);
     messageBuffers[userId].timer = setTimeout(() => {
       processBufferedMessages(userId);
     }, DEBOUNCE_MS);
@@ -290,47 +356,6 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// ============ THỬ ĐỔI AVATAR (CHẠY 1 LẦN) ============
-async function trySetAvatar() {
-  const avatarUrl = "https://i.ibb.co/93BprhcB/a24374d85a9d0f25473b94d122259add.jpg";
-  
-  // Danh sách endpoint có thể có của Zalo Bot API
-  const endpoints = [
-    { name: "setAvatar", url: `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/setAvatar` },
-    { name: "updateAvatar", url: `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/updateAvatar` },
-    { name: "setBotInfo", url: `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/setBotInfo` },
-  ];
-  
-  for (const ep of endpoints) {
-    try {
-      console.log(`🔍 Thử endpoint: ${ep.name}`);
-      let body;
-      if (ep.name === "setBotInfo") {
-        body = { avatar: avatarUrl };
-      } else {
-        body = { avatar: avatarUrl };
-      }
-      
-      const res = await axios.post(ep.url, body, {
-        headers: { "Content-Type": "application/json" }
-      });
-      console.log(`✅ [${ep.name}] Thành công:`, JSON.stringify(res.data));
-      return true;
-    } catch (e) {
-      const status = e.response?.status;
-      const err = JSON.stringify(e.response?.data || e.message);
-      console.log(`❌ [${ep.name}] Lỗi ${status}: ${err.substring(0, 200)}`);
-    }
-  }
-  
-  console.log("⚠️ Tất cả endpoint đều thất bại — Zalo chưa hỗ trợ đổi avatar qua API");
-  return false;
-}
-
-// Gọi thử khi bot khởi động (chạy 1 lần)
-trySetAvatar();
-
-// ============ KHỞI ĐỘNG SERVER ============
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Bot chạy tại port ${PORT}`);
