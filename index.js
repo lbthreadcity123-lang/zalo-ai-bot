@@ -67,7 +67,7 @@ VÍ DỤ:
 BÂY GIỜ HÃY HÁT NỐI:`;
 
 const MEMORY_LIMIT = 100;
-const DEBOUNCE_MS = 800;
+const DEBOUNCE_MS = 2000;
 
 // ============================================================
 // BỘ NHỚ ĐẶC BIỆT
@@ -129,82 +129,30 @@ const STICKER_MAP = {
 // ẢNH CHIBI YAE MIKO THEO CẢM XÚC
 // ============================================================
 const YAE_MIKO_IMAGES = {
-  // Vui vẻ
   happy: [
     "https://i.ibb.co/0RRVsvdV/aef31bacaa683b2f8d1602fe935a3314.jpg",
     "https://i.ibb.co/PSX4Gcm/7c4cc0779344a2be4ba4be9963e7e8c7.jpg"
   ],
-  smile: [
-    "https://i.ibb.co/6RYK103n/87a7685e2baa80c783213cf8e8b9a1b5.jpg"
-  ],
-  thumbsup: [
-    "https://i.ibb.co/0RRVsvdV/aef31bacaa683b2f8d1602fe935a3314.jpg"
-  ],
-  wink: [
-    "https://i.ibb.co/0RRVsvdV/aef31bacaa683b2f8d1602fe935a3314.jpg"
-  ],
-  
-  // Buồn
-  cry: [
-    "https://i.ibb.co/chpZ4ky1/4284aebcbb8a4bc7fd3ad865987cda8c.jpg"
-  ],
-  
-  // Giận
-  pout: [
-    "https://i.ibb.co/hFYPsBb8/bdc3bbe7438cdcf97136ee66ba149e6a.jpg"
-  ],
-  
-  // Ngại
-  blush: [
-    "https://i.ibb.co/SDgmR2HY/054c92ea4aee3b54199f6650b93faf71.jpg"
-  ],
-  
-  // Yêu thương
-  kiss: [
-    "https://i.ibb.co/GQ287GjN/582c9c8d25c539deba21bfc1942dd9fb.jpg"
-  ],
-  hug: [
-    "https://i.ibb.co/GQ287GjN/582c9c8d25c539deba21bfc1942dd9fb.jpg"
-  ],
-  
-  // Chọc ghẹo
-  poke: [
-    "https://i.ibb.co/MycQ1FNy/4ab2205c76a5ad8265c05da03a272dc0.jpg"
-  ],
-  smug: [
-    "https://i.ibb.co/6RYK103n/87a7685e2baa80c783213cf8e8b9a1b5.jpg"
-  ],
-  
-  // Suy nghĩ
+  smile: ["https://i.ibb.co/6RYK103n/87a7685e2baa80c783213cf8e8b9a1b5.jpg"],
+  thumbsup: ["https://i.ibb.co/0RRVsvdV/aef31bacaa683b2f8d1602fe935a3314.jpg"],
+  wink: ["https://i.ibb.co/0RRVsvdV/aef31bacaa683b2f8d1602fe935a3314.jpg"],
+  cry: ["https://i.ibb.co/chpZ4ky1/4284aebcbb8a4bc7fd3ad865987cda8c.jpg"],
+  pout: ["https://i.ibb.co/hFYPsBb8/bdc3bbe7438cdcf97136ee66ba149e6a.jpg"],
+  blush: ["https://i.ibb.co/SDgmR2HY/054c92ea4aee3b54199f6650b93faf71.jpg"],
+  kiss: ["https://i.ibb.co/GQ287GjN/582c9c8d25c539deba21bfc1942dd9fb.jpg"],
+  hug: ["https://i.ibb.co/GQ287GjN/582c9c8d25c539deba21bfc1942dd9fb.jpg"],
+  poke: ["https://i.ibb.co/MycQ1FNy/4ab2205c76a5ad8265c05da03a272dc0.jpg"],
+  smug: ["https://i.ibb.co/6RYK103n/87a7685e2baa80c783213cf8e8b9a1b5.jpg"],
   think: [
     "https://i.ibb.co/vCChG5tR/9220efb6ea0b09c7980b4409e2483d98.jpg",
     "https://i.ibb.co/1t8L5Fk6/074d42957bb9ce2eb83d7bda7c78ba7d.jpg"
   ],
-  
-  // Từ chối
-  nope: [
-    "https://i.ibb.co/NgJrB394/b89c0bb2fc203a58da7380b4ba621c73.jpg"
-  ],
-  
-  // Sốc
-  shock: [
-    "https://i.ibb.co/m52bs4dD/7f80cb52708bbb51c88a842ca4470c1c.jpg"
-  ],
-  
-  // Bất ngờ
-  surprise: [
-    "https://i.ibb.co/5hk1CvP0/4e65b98559655eb4c0ffeb2c6a0b5adf.jpg"
-  ],
-  
-  // Mặc định
-  neutral: [
-    "https://i.ibb.co/hFPrq4wb/891ffb4bcbbe33e82e7ebbc56b34274f.jpg"
-  ]
+  nope: ["https://i.ibb.co/NgJrB394/b89c0bb2fc203a58da7380b4ba621c73.jpg"],
+  shock: ["https://i.ibb.co/m52bs4dD/7f80cb52708bbb51c88a842ca4470c1c.jpg"],
+  surprise: ["https://i.ibb.co/5hk1CvP0/4e65b98559655eb4c0ffeb2c6a0b5adf.jpg"],
+  neutral: ["https://i.ibb.co/hFPrq4wb/891ffb4bcbbe33e82e7ebbc56b34274f.jpg"]
 };
 
-// ============================================================
-// CHIBI_MAP (cảm xúc → category)
-// ============================================================
 const CHIBI_MAP = {
   "vui": "happy", "hạnh phúc": "happy", "cười": "smile", "cười tươi": "smile",
   "nháy mắt": "wink", "chào": "wave", "nhảy": "dance",
@@ -222,9 +170,7 @@ const CHIBI_MAP = {
 
 function getYaeMikoImage(emotion) {
   const images = YAE_MIKO_IMAGES[emotion];
-  if (!images || images.length === 0) {
-    return YAE_MIKO_IMAGES.neutral[0];
-  }
+  if (!images || images.length === 0) return YAE_MIKO_IMAGES.neutral[0];
   return images[Math.floor(Math.random() * images.length)];
 }
 
@@ -238,18 +184,31 @@ const LOVE_WORDS = ["aishiteru", "suki", "suki desu", "daisuki", "koishiteru", "
 
 function detectLanguage(text) {
   const lower = text.toLowerCase().trim();
+  
+  // Bỏ emoji
+  const textNoEmoji = text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}-\u{2454}]|[\u{20D0}-\u{20FF}]|[\u{FE0F}]|[\u{200D}]/gu, "").trim();
+  
+  if (textNoEmoji.length === 0) return "EMOJI_ONLY";
+  
+  // Bỏ kaomoji
   const KAOMOJI_REGEX = /[\(（][^\)）]{1,20}[\)）]|¯\\_\(ツ\)_\/¯/g;
-  const textWithoutKaomoji = text.replace(KAOMOJI_REGEX, "").trim();
-  if (textWithoutKaomoji.length === 0) return "VN";
+  const textWithoutKaomoji = textNoEmoji.replace(KAOMOJI_REGEX, "").trim();
+  
+  if (textWithoutKaomoji.length === 0) return "EMOJI_ONLY";
+  
   for (const w of LOVE_WORDS) { if (lower.includes(w)) return "LOVE"; }
+  
   const JP_HIRA_KATA = /[\u3040-\u309F\u30A0-\u30FF]/;
   if (JP_HIRA_KATA.test(textWithoutKaomoji)) return "JP";
+  
   if (VN_REGEX.test(textWithoutKaomoji)) return "VN";
+  
   const words = textWithoutKaomoji.toLowerCase().split(/\s+/).filter(w => w);
   if (words.length <= 2) {
     const allOk = words.every(w => SHORT_EN_OK.includes(w) || EN_ABBREV_OK.includes(w) || w.length <= 3);
     if (allOk) return "VN";
   }
+  
   const EN_REGEX = /^[a-zA-Z\s!?.,'-]+$/;
   if (EN_REGEX.test(textWithoutKaomoji) && words.length >= 3) return "EN";
   if (EN_REGEX.test(textWithoutKaomoji)) return "VN";
@@ -298,7 +257,7 @@ function calcDelay(text) {
 }
 
 // ============================================================
-// GỬI TIN NHẮN
+// GỬI TIN NHẮN / STICKER / ẢNH
 // ============================================================
 async function sendMessages(userId, replyText, options = {}) {
   const { forceSingle = false } = options;
@@ -361,9 +320,6 @@ async function sendImage(userId, imageUrl) {
   }
 }
 
-// ============================================================
-// GỬI ẢNH YAE MIKO THEO CẢM XÚC
-// ============================================================
 async function sendChibiForEmotion(userId, emotion) {
   const yaeUrl = getYaeMikoImage(emotion);
   if (yaeUrl) {
@@ -384,9 +340,7 @@ async function singBack(userId, userVerse) {
     const res = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
-        contents: [
-          { role: "user", parts: [{ text: `Người dùng hát: "${userVerse}"\n\nHát nối tiếp 1 câu duy nhất.` }] }
-        ],
+        contents: [{ role: "user", parts: [{ text: `Người dùng hát: "${userVerse}"\n\nHát nối tiếp 1 câu duy nhất.` }] }],
         systemInstruction: { parts: [{ text: SINGING_STYLE }] }
       }
     );
@@ -403,9 +357,7 @@ async function singFirst(userId) {
     const res = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
-        contents: [
-          { role: "user", parts: [{ text: "Hát 1 câu hát tiếng Việt bất kỳ (ca dao, dân ca, nhạc chế...). CHỈ 1 câu duy nhất, hoàn chỉnh." }] }
-        ],
+        contents: [{ role: "user", parts: [{ text: "Hát 1 câu hát tiếng Việt bất kỳ (ca dao, dân ca, nhạc chế...). CHỈ 1 câu duy nhất, hoàn chỉnh." }] }],
         systemInstruction: { parts: [{ text: "Bạn là Korousi. CHỈ hát 1 câu duy nhất, không giải thích." }] }
       }
     );
@@ -424,23 +376,10 @@ async function analyzeImageAsEmotion(imageUrl) {
   try {
     const imgRes = await axios.get(imageUrl, { responseType: "arraybuffer" });
     const base64 = Buffer.from(imgRes.data).toString("base64");
-    
-    const prompt = `Bạn là Korousi — tsundere 18 tuổi, đang nhắn tin với bạn thân.
-Người dùng gửi ảnh. Hãy tưởng tượng bức ảnh ĐẠI DIỆN cho biểu cảm/hành động của họ.
-KHÔNG mô tả khách quan. Diễn giải cảm xúc và phản ứng tsundere.
-Trả lời 2-3 câu ngăn cách bằng "|||".
-Phân tích và trả lời:`;
-
+    const prompt = `Bạn là Korousi — tsundere 18 tuổi. Người dùng gửi ảnh. Diễn giải ảnh như biểu cảm của họ (KHÔNG mô tả khách quan). Trả lời 2-3 câu ngăn cách bằng "|||".`;
     const res = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: "image/jpeg", data: base64 } }
-          ]
-        }]
-      }
+      { contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64 } }] }] }
     );
     return res.data.candidates?.[0]?.content?.parts?.[0]?.text || "Ảnh gì mà t hok hiểu 😅";
   } catch (e) {
@@ -458,11 +397,8 @@ async function searchAnime(query) {
     if (!res.data?.data?.length) return null;
     const anime = res.data.data[0];
     return {
-      title: anime.title,
-      score: anime.score,
-      episodes: anime.episodes,
-      status: anime.status,
-      year: anime.year || anime.aired?.prop?.from?.year,
+      title: anime.title, score: anime.score, episodes: anime.episodes,
+      status: anime.status, year: anime.year || anime.aired?.prop?.from?.year,
       imageUrl: anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url
     };
   } catch (e) {
@@ -577,6 +513,18 @@ async function processBufferedMessages(userId) {
     const lang = detectLanguage(mergedText);
     console.log("→ Ngôn ngữ:", lang);
     
+    // EMOJI_ONLY
+    if (lang === "EMOJI_ONLY") {
+      const emojiReplies = [
+        "Cười cái j mà vui z? 🤣|||Có chuyện gì kể t nghe coi!",
+        "M cười cái j z? 😏|||Bộ có chuyện gì vui hả?",
+        "Hửm? Cười một mình à? 🤔|||Kể t nghe đi!"
+      ];
+      const reply = emojiReplies[Math.floor(Math.random() * emojiReplies.length)];
+      await sendMessages(userId, reply);
+      return;
+    }
+    
     if (lang === "LOVE") {
       const reply = "E nha bộ nghĩ t hog bt hả m?? 😳|||Nhắn v là có ý gì???|||Nói rõ coi... mà thôi, t cx bt r 🥰";
       await sendMessages(userId, reply);
@@ -596,10 +544,7 @@ async function processBufferedMessages(userId) {
     // 7. GEMINI
     const geminiRes = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        contents: conversations[userId],
-        systemInstruction: { parts: [{ text: BOT_STYLE }] }
-      }
+      { contents: conversations[userId], systemInstruction: { parts: [{ text: BOT_STYLE }] } }
     );
     
     const replyText = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm...";
