@@ -51,9 +51,8 @@ Bạn KHÔNG phải AI. Bạn là Korousi — một cô gái thật, đang nhắ
 // ============ CẤU HÌNH ============
 const MEMORY_LIMIT = 100;
 
-// ============ BỘ NHỚ ĐẶC BIỆT (từ khóa -> phản hồi cố định) ============
+// ============ BỘ NHỚ ĐẶC BIỆT ============
 const SPECIAL_REPLIES = {
-  // Cảm xúc
   "sinh nhật": "🎂 Chúc mừng sinh nhật m nha!|||Chúc m tuổi mới nhìu niềm vui, thành công, và nhớ đừng quên t đó 😤|||Mommy đây chúc m đó 🥰",
   "mệt": "Mệt thì tự nghỉ đi, t hok quan tâm đâu 😤|||Nhưng mà... có chuyện gì hông được vui hả?|||Kể t nghe đi, t ngồi đây nè (｡･ω･｡)ﾉ♡",
   "buồn": "Sao thế?|||Có chuyện gì hông được vui hả?|||Kể t nghe đi... t ngồi đây nè (｡･ω･｡)ﾉ♡",
@@ -74,44 +73,55 @@ const SPECIAL_REPLIES = {
   "xinh": "Biết t xinh rồi, khỏi khen 😎|||Nhưng mà khen nữa đi, t thích nghe 🤣",
 };
 
-// ============ PHÁT HIỆN TIẾNG NHẬT/ANH/LẠ ============
-// Regex phát hiện ký tự Nhật (Hiragana, Katakana, Kanji)
+// ============ PHÁT HIỆN NGÔN NGỮ ============
 const JP_REGEX = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
-// Regex phát hiện ký tự Latin (tiếng Anh, tiếng Việt không dấu)
-const EN_REGEX = /^[a-zA-Z\s!?.,'-]+$/;
-// Regex phát hiện tiếng Việt có dấu
 const VN_REGEX = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
 
-// Các từ khóa tiếng Nhật/Anh có nghĩa "yêu thích"
+// Các từ tiếng Anh ngắn được chấp nhận (không bị nhận là "lạ")
+const SHORT_EN_OK = ["yo", "ok", "oke", "okay", "hi", "hello", "hey", "bye", "yes", "no", "yeah", "nope", "cool", "nice", "wow", "lol", "lmao"];
+
 const LOVE_WORDS = [
   "aishiteru", "aishiteru yo", "suki", "suki desu", "daisuki", "daisuki da",
   "koishiteru", "i love you", "i love u", "love you", "love u", "iloveyou",
   "anh yêu em", "em yêu anh", "yêu em", "yêu anh"
 ];
 
+// Các từ viết tắt tiếng Anh thông dụng (cho phép, không báo "thoại cái jz")
+const EN_ABBREV_OK = ["dm", "vcl", "vl", "cc", "wtf", "omg", "btw", "idk", "lmfao", "rip", "gg", "ez"];
+
 function detectLanguage(text) {
   const lower = text.toLowerCase().trim();
   
-  // Kiểm tra từ yêu thích trước
+  // 1. LOVE
   for (const w of LOVE_WORDS) {
     if (lower.includes(w)) return "LOVE";
   }
   
-  // Có ký tự Nhật
+  // 2. Tiếng Nhật
   if (JP_REGEX.test(text)) return "JP";
   
-  // Không phải tiếng Việt có dấu, không phải tiếng Nhật
-  if (!VN_REGEX.test(text)) {
-    // Toàn ký tự Latin → có thể là tiếng Anh
-    if (EN_REGEX.test(text)) {
-      // Nếu là các từ tiếng Anh thông dụng → trả "EN"
-      return "EN";
-    }
-    // Ký tự lạ (Hàn, Trung giản thể, Nga...)
-    return "UNKNOWN";
+  // 3. Tiếng Việt có dấu → VN
+  if (VN_REGEX.test(text)) return "VN";
+  
+  // 4. Không có dấu — kiểm tra từ tiếng Anh ngắn / viết tắt
+  const words = lower.split(/\s+/).filter(w => w);
+  
+  // Từ tiếng Anh ngắn (yo, ok, hi...) → OK, gọi Gemini
+  if (words.length <= 2) {
+    const allOk = words.every(w => 
+      SHORT_EN_OK.includes(w) || EN_ABBREV_OK.includes(w) || w.length <= 3
+    );
+    if (allOk) return "VN"; // Coi như VN → gọi Gemini
   }
   
-  return "VN";
+  // 5. Chuỗi dài toàn chữ Latin không dấu (≥3 từ) → có thể là tiếng Anh
+  const EN_REGEX = /^[a-zA-Z\s!?.,'-]+$/;
+  if (EN_REGEX.test(text) && words.length >= 3) return "EN";
+  
+  // 6. Còn lại (Hàn, Trung giản thể, ký tự lạ...) → UNKNOWN
+  if (EN_REGEX.test(text)) return "VN"; // Chuỗi Latin ngắn coi như VN
+  
+  return "UNKNOWN";
 }
 
 // ============ TÌM PHẢN HỒI ĐẶC BIỆT ============
@@ -123,12 +133,31 @@ function findSpecialReply(userText) {
   return null;
 }
 
-// ============ GỬI TIN NHẮN (tách bằng |||) ============
+// ============ TÍNH DELAY THEO ĐỘ DÀI TIN NHẮN ============
+function calcDelay(text) {
+  // Giả lập tốc độ gõ: ~50ms/ký tự + base 500ms
+  const baseDelay = 500;
+  const perChar = 40;
+  const len = text.length;
+  let delay = baseDelay + len * perChar;
+  // Giới hạn tối đa 4 giây
+  if (delay > 4000) delay = 4000;
+  // Tối thiểu 700ms
+  if (delay < 700) delay = 700;
+  return delay;
+}
+
+// ============ GỬI TIN NHẮN (tách bằng |||, delay tự nhiên) ============
 async function sendMessages(userId, replyText) {
   const messages = replyText.split("|||").map(s => s.trim()).filter(s => s);
   console.log("→ Gửi", messages.length, "tin nhắn");
   
   for (let i = 0; i < messages.length; i++) {
+    // Delay TRƯỚC khi gửi tin — giả lập thời gian đang gõ
+    const delay = calcDelay(messages[i]);
+    console.log(`  → Đợi ${delay}ms trước tin ${i+1}: "${messages[i].substring(0,30)}..."`);
+    await new Promise(r => setTimeout(r, delay));
+    
     try {
       await axios.post(
         `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendMessage`,
@@ -136,10 +165,6 @@ async function sendMessages(userId, replyText) {
       );
     } catch (e) {
       console.error("Lỗi gửi tin:", e.response?.data || e.message);
-    }
-    // Delay 800ms giữa các tin để giống người thật đang gõ
-    if (i < messages.length - 1) {
-      await new Promise(r => setTimeout(r, 800));
     }
   }
 }
@@ -169,12 +194,11 @@ app.post("/webhook", async (req, res) => {
 
     console.log("User:", userId, "| Text:", userText);
 
-    // Khởi tạo lịch sử hội thoại
     if (!conversations[userId]) conversations[userId] = [];
     conversations[userId].push({ role: "user", parts: [{ text: userText }] });
     if (conversations[userId].length > MEMORY_LIMIT) conversations[userId].shift();
 
-    // ===== 1. KIỂM TRA BỘ NHỚ ĐẶC BIỆT =====
+    // ===== 1. BỘ NHỚ ĐẶC BIỆT =====
     const specialReply = findSpecialReply(userText);
     if (specialReply) {
       console.log("→ Special reply");
@@ -183,7 +207,7 @@ app.post("/webhook", async (req, res) => {
       return res.status(200).send("OK");
     }
 
-    // ===== 2. PHÁT HIỆN TIẾNG NHẬT/ANH/LẠ =====
+    // ===== 2. PHÁT HIỆN NGÔN NGỮ =====
     const lang = detectLanguage(userText);
     console.log("→ Ngôn ngữ phát hiện:", lang);
 
