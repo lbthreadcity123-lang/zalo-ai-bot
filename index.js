@@ -290,6 +290,47 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
+// ============ THỬ ĐỔI AVATAR (CHẠY 1 LẦN) ============
+async function trySetAvatar() {
+  const avatarUrl = "https://i.ibb.co/93BprhcB/a24374d85a9d0f25473b94d122259add.jpg";
+  
+  // Danh sách endpoint có thể có của Zalo Bot API
+  const endpoints = [
+    { name: "setAvatar", url: `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/setAvatar` },
+    { name: "updateAvatar", url: `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/updateAvatar` },
+    { name: "setBotInfo", url: `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/setBotInfo` },
+  ];
+  
+  for (const ep of endpoints) {
+    try {
+      console.log(`🔍 Thử endpoint: ${ep.name}`);
+      let body;
+      if (ep.name === "setBotInfo") {
+        body = { avatar: avatarUrl };
+      } else {
+        body = { avatar: avatarUrl };
+      }
+      
+      const res = await axios.post(ep.url, body, {
+        headers: { "Content-Type": "application/json" }
+      });
+      console.log(`✅ [${ep.name}] Thành công:`, JSON.stringify(res.data));
+      return true;
+    } catch (e) {
+      const status = e.response?.status;
+      const err = JSON.stringify(e.response?.data || e.message);
+      console.log(`❌ [${ep.name}] Lỗi ${status}: ${err.substring(0, 200)}`);
+    }
+  }
+  
+  console.log("⚠️ Tất cả endpoint đều thất bại — Zalo chưa hỗ trợ đổi avatar qua API");
+  return false;
+}
+
+// Gọi thử khi bot khởi động (chạy 1 lần)
+trySetAvatar();
+
+// ============ KHỞI ĐỘNG SERVER ============
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Bot chạy tại port ${PORT}`);
