@@ -5,7 +5,9 @@ app.use(express.json());
 
 const ZALO_BOT_TOKEN = process.env.ZALO_BOT_TOKEN;
 const ZALO_SECRET_TOKEN = process.env.ZALO_SECRET_TOKEN;
-const USER_ID = "5337e4daad8644d81d97";
+
+// Danh sách userId đã từng nhắn với bot
+const userList = new Set();
 
 // ============================================================
 // GỬI TIN NHẮN
@@ -16,21 +18,23 @@ async function sendMessages(userId, replyText) {
       `https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendMessage`,
       { chat_id: userId, text: replyText }
     );
-    console.log("✅ Đã gửi:", replyText);
+    console.log(`✅ Đã gửi cho ${userId}: ${replyText}`);
+    return true;
   } catch (e) {
-    console.error("❌ Lỗi gửi tin:", e.response?.data || e.message);
+    console.error(`❌ Lỗi gửi cho ${userId}:`, e.response?.data || e.message);
+    return false;
   }
 }
 
 // ============================================================
-// TÁC VỤ ĐỊNH KỲ — MEOW MEOW 5 LẦN/NGÀY
+// TÁC VỤ ĐỊNH KỲ — MEOW MEOW 7 LẦN/NGÀY
 // ============================================================
 function getVietnamTime() {
   const now = new Date();
   return new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
 }
 
-let lastSent = {}; // Lưu các mốc đã gửi trong ngày
+let lastSent = {};
 
 async function checkSchedule() {
   const vn = getVietnamTime();
@@ -38,25 +42,33 @@ async function checkSchedule() {
   const m = vn.getMinutes();
   const todayKey = `${vn.getFullYear()}-${vn.getMonth()}-${vn.getDate()}`;
 
-  // Các mốc thời gian cần gửi (giờ, phút)
+  // 7 mốc thời gian
   const schedule = [
-    { h: 6, m: 0, label: "6:00" },
+    { h: 6,  m: 0,  label: "6:00" },
     { h: 11, m: 30, label: "11:30" },
-    { h: 18, m: 0, label: "18:00" },
-    { h: 20, m: 0, label: "20:00" },
-    { h: 23, m: 0, label: "23:00" }
+    { h: 12, m: 30, label: "12:30" },
+    { h: 17, m: 0,  label: "17:00" },
+    { h: 18, m: 0,  label: "18:00" },
+    { h: 20, m: 0,  label: "20:00" },
+    { h: 23, m: 0,  label: "23:00" }
   ];
 
   for (const t of schedule) {
     const key = `${todayKey}-${t.label}`;
     if (h === t.h && m === t.m && lastSent[key] !== true) {
       lastSent[key] = true;
-      console.log(`⏰ ${t.label} — meow meow`);
-      await sendMessages(USER_ID, "meow meow 🐱");
+      console.log(`⏰ ${t.label} — Gửi meow meow cho ${userList.size} người`);
+      
+      // Gửi cho TẤT CẢ user trong danh sách
+      for (const userId of userList) {
+        await sendMessages(userId, "meow meow 🐱");
+        // Nghỉ 200ms giữa các lần gửi
+        await new Promise(r => setTimeout(r, 200));
+      }
     }
   }
 
-  // Reset lastSent vào đầu ngày mới (0:00)
+  // Reset lastSent vào đầu ngày mới
   if (h === 0 && m === 0) {
     lastSent = {};
   }
@@ -68,7 +80,7 @@ setInterval(checkSchedule, 60 * 1000);
 // ROUTES
 // ============================================================
 app.get("/", (req, res) => {
-  res.send("🐱 Meow Meow Bot đang chạy!");
+  res.send(`🐱 Meow Meow Bot đang chạy! Đã có ${userList.size} người dùng.`);
 });
 
 app.post("/webhook", async (req, res) => {
@@ -83,10 +95,15 @@ app.post("/webhook", async (req, res) => {
     
     console.log("📨 Event:", eventName);
 
-    // Lấy userId bất kể event nào
     const userId = body.message?.from?.id || body.sender?.id;
 
-    // Bất kể tin gì — text, ảnh, sticker — đều trả lời "meow meow"
+    // Lưu userId vào danh sách
+    if (userId && !userList.has(userId)) {
+      userList.add(userId);
+      console.log(`➕ Thêm user mới: ${userId} (Tổng: ${userList.size})`);
+    }
+
+    // Trả lời "meow meow" cho mọi loại tin
     if (userId && (
       eventName === "message.text.received" ||
       eventName === "message.image.received" ||
@@ -102,8 +119,6 @@ app.post("/webhook", async (req, res) => {
     )) {
       console.log(`→ Nhận tin từ ${userId} → meow meow`);
       await sendMessages(userId, "meow meow 🐱");
-    } else {
-      console.log("→ Bỏ qua event:", eventName);
     }
 
     res.status(200).send("OK");
